@@ -82,3 +82,7 @@ windows/flutter/generated_plugins.cmake
 backend/node_modules/
 backend/.env
 backend/.env.local
+
+# Root Node related
+node_modules/
+.env.local
