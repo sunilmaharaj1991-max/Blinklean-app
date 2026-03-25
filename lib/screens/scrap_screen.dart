@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../models/scrap_item_model.dart';
-import '../services/scrap_price_service.dart';
+import '../services/whatsapp_service.dart';
 import '../core/app_theme.dart';
 import '../utils/validators.dart';
-import '../utils/error_handler.dart';
-import 'pickup_booking_screen.dart';
 
 class ScrapScreen extends StatefulWidget {
   const ScrapScreen({super.key});
@@ -24,17 +21,29 @@ class _ScrapScreenState extends State<ScrapScreen> {
     'Cardboard': Icons.view_in_ar_rounded,
   };
 
-  final ScrapPriceService _priceService = ScrapPriceService();
+  final Map<String, String> _categoryDescriptions = {
+    'Paper': 'Newspapers, books, notebooks',
+    'Plastic': 'Bottles, containers, bags',
+    'Metal': 'Iron, aluminum, copper',
+    'Glass': 'Bottles, jars, broken glass',
+    'E-Waste': 'Old electronics, batteries',
+    'Cardboard': 'Boxes, packaging material',
+  };
+
   String? _selectedCategory;
   final TextEditingController _weightController = TextEditingController();
-  final List<ScrapItemModel> _scrapItems = [];
-
-  double? _totalEstimatedValue;
-  bool _isEstimating = false;
+  final List<Map<String, dynamic>> _scrapItems = [];
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final WhatsappService _whatsappService = WhatsappService();
 
   @override
   void dispose() {
     _weightController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -47,48 +56,84 @@ class _ScrapScreenState extends State<ScrapScreen> {
       return;
     }
     if (weightError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(weightError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(weightError)));
       return;
     }
 
     double weight = double.parse(_weightController.text);
     setState(() {
-      _scrapItems.add(
-        ScrapItemModel(
-          itemName: '$_selectedCategory Scrap',
-          category: _selectedCategory!,
-          estimatedWeight: weight,
-          estimatedPrice: 0.0,
-          quantity: 1,
-        ),
-      );
+      _scrapItems.add({'category': _selectedCategory, 'weight': weight});
       _selectedCategory = null;
       _weightController.clear();
-      _totalEstimatedValue = null;
     });
   }
 
-  Future<void> _estimateValue() async {
-    if (_scrapItems.isEmpty) return;
+  double get _totalWeight {
+    return _scrapItems.fold(0, (sum, item) => sum + (item['weight'] as double));
+  }
 
-    setState(() => _isEstimating = true);
+  void _contactOnWhatsApp() async {
+    if (_addressController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your address')),
+      );
+      return;
+    }
+    if (_nameController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter your name')));
+      return;
+    }
+    if (_phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your phone number')),
+      );
+      return;
+    }
+    if (_scrapItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one scrap item')),
+      );
+      return;
+    }
 
     try {
-      final calculatedEstimates = await _priceService.calculateEstimates(_scrapItems);
-      final calculatedTotal = _priceService.calculateTotal(calculatedEstimates);
+      String message = '🏠 *Scrap Pickup Request*\n\n';
+      message += '👤 Name: ${_nameController.text}\n';
+      message += '📱 Phone: ${_phoneController.text}\n';
+      message += '📍 Address: ${_addressController.text}\n\n';
+      message += '♻️ *Scrap Items:*\n';
+
+      for (var item in _scrapItems) {
+        message += '• ${item['category']} - ${item['weight']} kg\n';
+      }
+      message += '\n📦 Total Weight: ${_totalWeight.toStringAsFixed(1)} kg\n';
+      message += '\n💰 Price will be informed on pickup';
+
+      await _whatsappService.sendMessage(message);
 
       if (mounted) {
-        setState(() {
-          _totalEstimatedValue = calculatedTotal;
-          _isEstimating = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'WhatsApp opened! Send the message to confirm pickup.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isEstimating = false);
-        ErrorHandler.showError(context, e);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open WhatsApp: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -96,323 +141,532 @@ class _ScrapScreenState extends State<ScrapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAF9),
+      backgroundColor: AppTheme.scaffoldBackground,
       appBar: AppBar(
-        title: Text('Sell Scrap', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        foregroundColor: AppTheme.textColor,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppTheme.primaryColor,
+              size: 20,
+            ),
+          ),
+        ),
+        title: Text(
+          'Sell Scrap',
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textColor,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildRecycleHeader(),
-            const SizedBox(height: 40),
-
-            Text(
-              'What are you recycling?',
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5),
-            ),
-            const SizedBox(height: 16),
-            _buildCategoryGrid(),
-            
+            _buildHeader(),
             const SizedBox(height: 32),
-            Text(
-              'Approximate Weight',
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.shade100),
-                    ),
-                    child: TextField(
-                      controller: _weightController,
-                      keyboardType: TextInputType.number,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        hintText: 'e.g. 5.5',
-                        suffixText: 'kg',
-                        suffixStyle: GoogleFonts.outfit(color: AppTheme.subtleColor),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                SizedBox(
-                  height: 56,
-                  width: 56,
-                  child: ElevatedButton(
-                    onPressed: _addScrapItem,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      elevation: 4,
-                    ),
-                    child: const Icon(Icons.add_rounded),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 48),
-
+            _buildCategorySection(),
+            const SizedBox(height: 32),
+            _buildWeightInput(),
+            const SizedBox(height: 24),
             if (_scrapItems.isNotEmpty) ...[
-               _buildSectionDivider('MY RECYCLING CART'),
-               const SizedBox(height: 20),
-               _buildItemsList(),
-               const SizedBox(height: 40),
-               
-               if (_totalEstimatedValue == null)
-                 _buildEstimateButton()
-               else
-                 _buildTotalWithSchedule(),
-            ] else 
-               Center(
-                 child: Column(
-                   children: [
-                     const SizedBox(height: 40),
-                     Icon(Icons.recycling_rounded, size: 80, color: AppTheme.primaryColor.withValues(alpha: 0.1)),
-                     const SizedBox(height: 16),
-                     Text(
-                       'Your cart is empty',
-                       style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.subtleColor),
-                     ),
-                     const SizedBox(height: 8),
-                     Text(
-                       'Add items like paper or plastic to get an estimate.',
-                       style: GoogleFonts.outfit(fontSize: 13, color: AppTheme.subtleColor.withValues(alpha: 0.7)),
-                       textAlign: TextAlign.center,
-                     ),
-                   ],
-                 ),
-               ),
-
-             const SizedBox(height: 60),
+              _buildItemsList(),
+              const SizedBox(height: 32),
+            ],
+            _buildContactForm(),
+            const SizedBox(height: 24),
+            if (_scrapItems.isNotEmpty) _buildWhatsAppButton(),
+            const SizedBox(height: 100),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionDivider(String label) {
-    return Row(
-      children: [
-        Text(label, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.subtleColor, letterSpacing: 1.5)),
-        const SizedBox(width: 16),
-        Expanded(child: Divider(color: Colors.grey.shade100, thickness: 1.5)),
-      ],
-    );
-  }
-
-  Widget _buildRecycleHeader() {
+  Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
+        gradient: LinearGradient(
+          colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
+        ),
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-                child: const Icon(Icons.bolt_rounded, color: AppTheme.primaryColor, size: 28),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('India\'s 1st AI Powered', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-                    Text('Eco-Smart Recycling', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.textColor)),
-                  ],
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Recycling 10kg of paper saves 17 trees and reduces 70% of energy consumption! Be the hero today.',
-            style: GoogleFonts.outfit(fontSize: 13, color: AppTheme.subtleColor, height: 1.5),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryGrid() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.9,
-      ),
-      itemCount: _categoryIcons.length,
-      itemBuilder: (context, index) {
-        final category = _categoryIcons.keys.elementAt(index);
-        final icon = _categoryIcons[category];
-        final isSelected = category == _selectedCategory;
-        
-        return InkWell(
-          onTap: () => setState(() => _selectedCategory = category),
-          borderRadius: BorderRadius.circular(24),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primaryColor : Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade100),
-              boxShadow: isSelected 
-                  ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 5))] 
-                  : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withValues(alpha: 0.2) : AppTheme.primaryColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: isSelected ? Colors.white : AppTheme.primaryColor, size: 24),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  category,
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : AppTheme.textColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildItemsList() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _scrapItems.length,
-      itemBuilder: (context, index) {
-        final item = _scrapItems[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.grey.shade100),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.05), shape: BoxShape.circle),
-                child: Icon(_categoryIcons[item.category] ?? Icons.recycling, color: AppTheme.primaryColor, size: 24),
+                child: const Text('♻️', style: TextStyle(fontSize: 36)),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.category, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('${item.estimatedWeight} kg', style: GoogleFonts.outfit(color: AppTheme.subtleColor, fontSize: 13)),
+                    Text(
+                      'Sell Your Scrap',
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Get instant pickup & fair market price!',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.remove_circle_rounded, color: Colors.red.shade300, size: 28),
-                onPressed: () => setState(() {
-                  _scrapItems.removeAt(index);
-                  _totalEstimatedValue = null;
-                }),
-              ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Price will be informed on pickup based on current market rates',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.95),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildEstimateButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 64,
-      child: ElevatedButton.icon(
-        onPressed: _isEstimating ? null : _estimateValue,
-        icon: const Icon(Icons.calculate_rounded),
-        label: Text(_isEstimating ? 'ANALYZING...' : 'GET VALUE ESTIMATE'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.textColor,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          elevation: 10,
+  Widget _buildCategorySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'What do you have?',
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Select the type of scrap you want to sell',
+          style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.subtleColor),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.85,
+          ),
+          itemCount: _categoryIcons.length,
+          itemBuilder: (context, index) {
+            final category = _categoryIcons.keys.elementAt(index);
+            final icon = _categoryIcons[category];
+            final isSelected = category == _selectedCategory;
+
+            return InkWell(
+              onTap: () => setState(() => _selectedCategory = category),
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryColor : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : Colors.grey.shade100,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isSelected
+                          ? AppTheme.primaryColor.withValues(alpha: 0.2)
+                          : Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : AppTheme.primaryColor.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        icon,
+                        color: isSelected
+                            ? Colors.white
+                            : AppTheme.primaryColor,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      category,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? Colors.white : AppTheme.textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _categoryDescriptions[category] ?? '',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 8,
+                        color: isSelected
+                            ? Colors.white70
+                            : AppTheme.subtleColor,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeightInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Approximate Weight',
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Enter the estimated weight of your scrap',
+          style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.subtleColor),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: TextField(
+                  controller: _weightController,
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. 5.5',
+                    suffixText: 'kg',
+                    suffixStyle: GoogleFonts.outfit(
+                      color: AppTheme.subtleColor,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              height: 56,
+              width: 56,
+              child: ElevatedButton(
+                onPressed: _addScrapItem,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Icon(Icons.add_rounded, size: 28),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItemsList() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'My Scrap List',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_scrapItems.length} items',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...List.generate(_scrapItems.length, (index) {
+            final item = _scrapItems[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.scaffoldBackground,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _categoryIcons[item['category']] ?? Icons.recycling,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['category'],
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          '${(item['weight'] as double).toStringAsFixed(1)} kg',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: AppTheme.subtleColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red.shade300,
+                      size: 24,
+                    ),
+                    onPressed: () =>
+                        setState(() => _scrapItems.removeAt(index)),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const Divider(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Weight',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                '${_totalWeight.toStringAsFixed(1)} kg',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Your Details',
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'We need this to contact you for pickup',
+          style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.subtleColor),
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          _nameController,
+          'Full Name',
+          Icons.person_outline_rounded,
+          TextInputType.name,
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(
+          _phoneController,
+          'Phone Number',
+          Icons.phone_android_rounded,
+          TextInputType.phone,
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(
+          _addressController,
+          'Pickup Address (with Pincode)',
+          Icons.location_on_outlined,
+          TextInputType.streetAddress,
+          maxLines: 2,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon,
+    TextInputType type, {
+    int maxLines = 1,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: type,
+        maxLines: maxLines,
+        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.outfit(
+            fontSize: 13,
+            color: AppTheme.subtleColor,
+          ),
+          prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 22),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+          border: InputBorder.none,
         ),
       ),
     );
   }
 
-  Widget _buildTotalWithSchedule() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 30, offset: const Offset(0, 10))],
-      ),
-      child: Column(
-        children: [
-          Text('ESTIMATED EARNINGS', style: GoogleFonts.outfit(color: Colors.white.withValues(alpha: 0.7), fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 10)),
-          const SizedBox(height: 12),
-          Text(
-            '₹${_totalEstimatedValue?.toStringAsFixed(0)}',
-            style: GoogleFonts.outfit(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w900, letterSpacing: -1),
+  Widget _buildWhatsAppButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 60,
+      child: ElevatedButton.icon(
+        onPressed: _contactOnWhatsApp,
+        icon: const Icon(Icons.message_rounded, size: 24),
+        label: Text(
+          'Book Pickup on WhatsApp',
+          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF25D366),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 60,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => PickupBookingScreen(items: _scrapItems)),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white, 
-                foregroundColor: AppTheme.primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                elevation: 0,
-              ),
-              child: Text('SCHEDULE FREE PICKUP', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-          ),
-        ],
+          elevation: 4,
+        ),
       ),
     );
   }

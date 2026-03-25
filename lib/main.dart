@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'core/supabase_config.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+import 'firebase_options.dart';
 import 'core/app_theme.dart';
-import 'screens/login_screen.dart';
-import 'screens/location_availability_screen.dart';
-import 'screens/main_navigation_screen.dart';
 import 'screens/splash_screen.dart';
-import 'core/app_state.dart';
+import 'screens/main_navigation_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await Supabase.initialize(
-    url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
-  );
-  
-  runApp(const MyApp());
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  runApp(const BlinKleanApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class BlinKleanApp extends StatelessWidget {
+  const BlinKleanApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,32 +34,16 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Supabase auth state changes
-    final session = Supabase.instance.client.auth.currentSession;
-    
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && session == null) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
+    // Bypassing login for now based on user request
+    return const MainNavigationScreen();
+  }
+}
 
-        final currentSession = snapshot.data?.session ?? session;
-        
-        if (currentSession != null) {
-          return ListenableBuilder(
-            listenable: AppState(),
-            builder: (context, child) {
-              if (AppState().currentPincode == null) {
-                return const LocationAvailabilityScreen();
-              }
-              return const MainNavigationScreen();
-            },
-          );
-        }
-        
-        return const LoginScreen();
-      },
-    );
+class MainEntry extends StatelessWidget {
+  const MainEntry({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const AuthWrapper();
   }
 }

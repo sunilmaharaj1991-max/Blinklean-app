@@ -32,6 +32,10 @@ Preferred Time:
 $time
 ''';
 
+    await sendMessage(message);
+  }
+
+  Future<void> sendMessage(String message) async {
     final Uri whatsappUrl = Uri.parse(
       'https://wa.me/$_businessNumber?text=${Uri.encodeComponent(message)}',
     );

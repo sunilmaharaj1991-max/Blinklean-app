@@ -1,166 +1,453 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
-import '../services/auth_service.dart';
 import 'booking_history_screen.dart';
-import '../core/app_state.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  final AuthService _auth = AuthService();
-  Map<String, dynamic>? _user;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProfile();
-  }
-
-  Future<void> _loadProfile() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      final profile = await _auth.getUserProfile(user.id);
-      if (mounted) {
-        setState(() {
-          _user = profile;
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        title: Text('Account Profile', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            Center(
-              child: Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.primaryColor, width: 2)),
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      child: Image.asset(
-                        'assets/images/logo_icon.png',
-                        width: 100,
-                        height: 100,
-                        errorBuilder: (c, e, s) => const Icon(Icons.person_rounded, size: 60, color: AppTheme.primaryColor),
+      backgroundColor: const Color(0xFFF0F4F8),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Profile Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF009543), Color(0xFF00ADEF)],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(40),
+                    bottomRight: Radius.circular(40),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'My Profile',
+                              style: GoogleFonts.outfit(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Manage your account',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.settings_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                    // Profile Avatar
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.person_rounded,
+                          size: 50,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      child: const Icon(Icons.verified_user_rounded, color: Colors.blue, size: 24),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Guest User',
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Tap to login',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Quick Actions
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickAction(
+                            Icons.history_rounded,
+                            'Bookings',
+                            '0',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAction(
+                            Icons.favorite_rounded,
+                            'Favorites',
+                            '0',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAction(
+                            Icons.location_on_rounded,
+                            'Addresses',
+                            '0',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(_user?['name'] ?? 'Guest User', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
-            Text(_user?['phone'] ?? 'Verified Account', style: GoogleFonts.outfit(color: AppTheme.subtleColor)),
 
-            const SizedBox(height: 40),
+              const SizedBox(height: 24),
 
-            // Profile Stats (Bookings Count)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  _buildStatCard('Bookings', '${_user?['bookingsCount'] ?? 0}', Icons.history_rounded),
-                  const SizedBox(width: 16),
-                  _buildStatCard('Wallet', '₹0.00', Icons.account_balance_wallet_rounded),
-                ],
+              // Menu Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildMenuSection('Account', [
+                      _buildMenuItem(
+                        Icons.history_rounded,
+                        'Booking History',
+                        'View your past bookings',
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (c) => const BookingHistoryScreen(),
+                          ),
+                        ),
+                      ),
+                      _buildMenuItem(
+                        Icons.location_on_outlined,
+                        'My Addresses',
+                        'Manage delivery addresses',
+                        () {},
+                      ),
+                      _buildMenuItem(
+                        Icons.payment_rounded,
+                        'Payment Methods',
+                        'Add or remove payment options',
+                        () {},
+                      ),
+                    ]),
+                    const SizedBox(height: 20),
+                    _buildMenuSection('Preferences', [
+                      _buildMenuItem(
+                        Icons.notifications_outlined,
+                        'Notifications',
+                        'Manage notification settings',
+                        () {},
+                      ),
+                      _buildMenuItem(
+                        Icons.language_rounded,
+                        'Language',
+                        'English',
+                        () {},
+                      ),
+                      _buildMenuItem(
+                        Icons.dark_mode_rounded,
+                        'Dark Mode',
+                        'System default',
+                        () {},
+                      ),
+                    ]),
+                    const SizedBox(height: 20),
+                    _buildMenuSection('Support', [
+                      _buildMenuItem(
+                        Icons.help_outline_rounded,
+                        'Help & FAQ',
+                        'Get help with your orders',
+                        () {},
+                      ),
+                      _buildMenuItem(
+                        Icons.chat_rounded,
+                        'Contact Us',
+                        'Reach out to our team',
+                        () {},
+                      ),
+                      _buildMenuItem(
+                        Icons.info_outline_rounded,
+                        'About BlinKlean',
+                        'Learn more about us',
+                        () {},
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+
+                    // App Info
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 15,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.primaryColor,
+                                      AppTheme.secondaryColor,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Image.asset(
+                                  'assets/images/logo_icon.png',
+                                  width: 24,
+                                  height: 24,
+                                  color: Colors.white,
+                                  errorBuilder: (c, e, s) => const Icon(
+                                    Icons.bolt_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/logo_full.png',
+                                    height: 20,
+                                    errorBuilder: (c, e, s) => Text(
+                                      'BlinKlean',
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Version 1.0.0',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      color: AppTheme.subtleColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'India\'s 1st AI Powered QuickClean Platform',
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              color: AppTheme.subtleColor,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 100),
+                  ],
+                ),
               ),
-            ),
-
-            const SizedBox(height: 40),
-
-            // Profile Actions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                   _buildListTile(Icons.location_on_outlined, 'Service Address', _user?['address'] ?? 'No address set', () {}),
-                   _buildListTile(Icons.history_rounded, 'My Booking History', 'Manage your existing service schedules.', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (c) => BookingHistoryScreen()));
-                   }),
-                   _buildListTile(Icons.pin_drop_rounded, 'Change Service Pin', 'Update your current location gate.', () {
-                      AppState().clearLocation();
-                   }),
-                   const SizedBox(height: 40),
-                   SizedBox(
-                     width: double.infinity,
-                     height: 56,
-                     child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade400, foregroundColor: Colors.white, shadowColor: Colors.transparent),
-                        label: const Text('Sign Out'),
-                        icon: const Icon(Icons.logout_rounded),
-                        onPressed: () => _auth.signOut(),
-                     ),
-                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 40),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.grey.shade100)),
-        child: Column(
-          children: [
-            Icon(icon, color: AppTheme.primaryColor),
-            const SizedBox(height: 12),
-            Text(value, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(label, style: GoogleFonts.outfit(color: AppTheme.subtleColor, fontSize: 13)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildListTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _buildQuickAction(IconData icon, String label, String count) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(
+            count,
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 12, color: Colors.white70),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.outfit(fontSize: 10, color: Colors.white70),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuSection(String title, List<Widget> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.subtleColor,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            children: items.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return Column(
+                children: [
+                  item,
+                  if (index < items.length - 1)
+                    Divider(height: 1, indent: 70, color: Colors.grey.shade100),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuItem(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade100)),
-        leading: Icon(icon, color: AppTheme.primaryColor),
-        title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text(subtitle, style: GoogleFonts.outfit(color: AppTheme.subtleColor, fontSize: 13)),
-        trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.subtleColor),
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppTheme.primaryColor, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        color: AppTheme.subtleColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.grey.shade400,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

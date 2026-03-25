@@ -1,138 +1,258 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:convert';
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ApiService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  static const String baseUrl = 'https://blinklean-api.onrender.com/api';
 
-  Future<bool> _isConnected() async {
-    var connectivityResult = await (Connectivity().checkConnectivity());
-    return !connectivityResult.contains(ConnectivityResult.none);
-  }
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _idToken;
 
-  Future<Map<String, dynamic>> checkServiceAvailability(String pincode) async {
-    if (!await _isConnected()) return {'error': 'No internet connection'};
-    try {
-      final List<dynamic> data = await _supabase
-          .from('pincode_availability')
-          .select()
-          .eq('pincode', pincode);
-      
-      if (data.isNotEmpty) {
-        return {'available': true, 'message': 'Service available in your area'};
-      } else {
-        return {'available': false, 'message': 'Service not currently available in your area'};
-      }
-    } catch (e) {
-      // Fallback for demo if table doesn't exist yet
-      return {'available': true, 'message': 'Demo Mode: Service available'};
+  Future<String?> getIdToken() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      _idToken = await user.getIdToken();
     }
+    return _idToken;
   }
 
-  Future<Map<String, dynamic>> estimateScrapPrice(
-    String category,
-    double weight,
-  ) async {
-    if (!await _isConnected()) return {'error': 'No internet connection'};
-    try {
-      final data = await _supabase
-          .from('scrap_prices')
-          .select('price_per_unit')
-          .eq('category_name', category)
-          .single();
-      
-      final pricePerUnit = data['price_per_unit'] as num;
-      return {
-        'success': true,
-        'estimated_price': pricePerUnit * weight,
-        'category': category,
-        'weight': weight,
-      };
-    } catch (e) {
-      return {'success': true, 'estimated_price': 10 * weight, 'message': 'Demo price applied'};
+  Map<String, String> _headers({bool requiresAuth = true}) {
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (requiresAuth && _idToken != null) {
+      headers['Authorization'] = 'Bearer $_idToken';
     }
+    return headers;
   }
 
-  Future<Map<String, dynamic>> createBooking({
-    required String serviceName,
-    required String address,
-    required String date,
-    required String time,
-    String? phone,
-    String? name,
+  Future<void> refreshToken() async {
+    await getIdToken();
+  }
+
+  Future<Map<String, dynamic>> _handleResponse(http.Response response) async {
+    final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body as Map<String, dynamic>;
+    }
+
+    final error = body['error'] ?? 'An error occurred';
+    throw ApiException(error, statusCode: response.statusCode);
+  }
+
+  Future<Map<String, dynamic>> get(
+    String endpoint, {
+    bool requiresAuth = true,
   }) async {
-    if (!await _isConnected()) return {'error': 'No internet connection'};
+    await refreshToken();
     try {
-      final user = _supabase.auth.currentUser;
-      final response = await _supabase.from('bookings').insert({
-        'user_id': user?.id,
-        'service_name': serviceName,
-        'address': address,
-        'booking_date': date,
-        'booking_time': time,
-        'contact_phone': phone,
-        'user_name': name,
-        'status': 'Pending',
-        'created_at': DateTime.now().toIso8601String(),
-      }).select().single();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: _headers(requiresAuth: requiresAuth),
+          )
+          .timeout(const Duration(seconds: 30));
 
-      return {
-        'success': true,
-        'message': 'Booking created successfully',
-        'order_id': response['id'].toString(),
-      };
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException('Request timed out. Please check your connection.');
     } catch (e) {
-       // Return a mock success for demo if database is not ready
-       return {
-        'success': true,
-        'message': 'Booking created (Demo Mode)',
-        'order_id': 'mock_${DateTime.now().millisecondsSinceEpoch}',
-      };
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
     }
   }
 
-  Future<Map<String, dynamic>> getBookingHistory() async {
-    if (!await _isConnected()) return {'error': 'No internet connection'};
+  Future<Map<String, dynamic>> post(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requiresAuth = true,
+  }) async {
+    await refreshToken();
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return {'error': 'User not logged in'};
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: _headers(requiresAuth: requiresAuth),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 30));
 
-      final List<dynamic> data = await _supabase
-          .from('bookings')
-          .select()
-          .eq('user_id', user.id)
-          .order('created_at', ascending: false);
-
-      return {'bookings': data};
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException('Request timed out. Please check your connection.');
     } catch (e) {
-      // Mock data for demo
-      return {
-        'bookings': [
-          {
-            'id': '1',
-            'service_name': 'Window Cleaning',
-            'status': 'Pending',
-            'booking_date': '2026-03-06',
-            'booking_time': '3:00 PM',
-            'address': 'Vijayanagar, Bengaluru',
-            'amount': 299.0,
-          },
-        ],
-      };
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
     }
   }
 
-  Future<Map<String, dynamic>> registerDeviceToken(String token) async {
-    if (!await _isConnected()) return {'error': 'No internet connection'};
+  Future<Map<String, dynamic>> put(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requiresAuth = true,
+  }) async {
+    await refreshToken();
     try {
-      final user = _supabase.auth.currentUser;
-      if (user != null) {
-        await _supabase.from('users').update({
-          'device_token': token,
-        }).eq('id', user.id);
-      }
-      return {'success': true};
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: _headers(requiresAuth: requiresAuth),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 30));
+
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException('Request timed out. Please check your connection.');
     } catch (e) {
-      return {'success': false, 'error': e.toString()};
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
     }
+  }
+
+  Future<Map<String, dynamic>> syncUser({
+    String? name,
+    String? email,
+    String? phone,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw ApiException('User not authenticated');
+
+    return post(
+      '/auth/sync',
+      body: {
+        'uid': user.uid,
+        'name': name ?? user.displayName,
+        'email': email ?? user.email,
+        'phone': phone,
+      },
+      requiresAuth: false,
+    );
+  }
+
+  Future<Map<String, dynamic>> getUserProfile() async {
+    return get('/auth/me');
+  }
+
+  Future<Map<String, dynamic>> updateUser(Map<String, dynamic> updates) async {
+    return put('/auth/me', body: updates);
+  }
+
+  Future<Map<String, dynamic>> updateAddress(
+    Map<String, dynamic> address,
+  ) async {
+    return put('/auth/address', body: {'address': address});
+  }
+
+  Future<List<dynamic>> getServices({String? category}) async {
+    final endpoint = category != null
+        ? '/services?category=$category'
+        : '/services';
+    final response = await get(endpoint, requiresAuth: false);
+    return response['services'] as List<dynamic>;
+  }
+
+  Future<List<dynamic>> getServicesByCategory(String category) async {
+    final response = await get(
+      '/services/category/$category',
+      requiresAuth: false,
+    );
+    return response['services'] as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getServiceById(String id) async {
+    final response = await get('/services/$id', requiresAuth: false);
+    return response['service'] as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> getCategories() async {
+    final response = await get('/services/categories', requiresAuth: false);
+    return response['categories'] as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createBooking(
+    Map<String, dynamic> bookingData,
+  ) async {
+    return post('/bookings', body: bookingData);
+  }
+
+  Future<Map<String, dynamic>> getUserBookings({
+    String? status,
+    int page = 1,
+  }) async {
+    String endpoint = '/bookings?page=$page';
+    if (status != null) endpoint += '&status=$status';
+    return get(endpoint);
+  }
+
+  Future<Map<String, dynamic>> getBookingById(String bookingId) async {
+    return get('/bookings/$bookingId', requiresAuth: false);
+  }
+
+  Future<Map<String, dynamic>> cancelBooking(
+    String bookingId, {
+    String? reason,
+  }) async {
+    return put(
+      '/bookings/$bookingId/cancel',
+      body: {'reason': reason ?? 'Cancelled by user'},
+    );
+  }
+
+  Future<Map<String, dynamic>> rateBooking(
+    String bookingId, {
+    required int stars,
+    String? review,
+  }) async {
+    return put(
+      '/bookings/$bookingId/rate',
+      body: {'stars': stars, 'review': review},
+    );
+  }
+
+  Future<Map<String, dynamic>> createScrapPickup(
+    Map<String, dynamic> pickupData,
+  ) async {
+    return post('/scrap', body: pickupData);
+  }
+
+  Future<List<dynamic>> getUserScrapPickups({String? status}) async {
+    String endpoint = '/scrap/my';
+    if (status != null) endpoint += '?status=$status';
+    final response = await get(endpoint);
+    return response['pickups'] as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getProviderProfile() async {
+    return get('/providers/me');
+  }
+
+  Future<Map<String, dynamic>> getProviderBookings({
+    String? status,
+    String? type,
+  }) async {
+    String endpoint = '/providers/bookings?';
+    if (status != null) endpoint += 'status=$status&';
+    if (type != null) endpoint += 'type=$type';
+    return get(endpoint);
+  }
+
+  Future<Map<String, dynamic>> updateProviderStatus(String status) async {
+    return put('/providers/status', body: {'status': status});
   }
 }
+
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  ApiException(this.message, {this.statusCode});
+
+  @override
+  String toString() => message;
+}
+
+final apiService = ApiService();

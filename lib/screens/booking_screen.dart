@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import '../models/service_model.dart';
 import '../services/payment_service.dart';
+import '../services/api_service.dart';
 import '../core/app_theme.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -19,9 +20,11 @@ class _BookingScreenState extends State<BookingScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final PaymentService _paymentService = PaymentService();
-  final SupabaseClient _supabase = Supabase.instance.client;
-  
+  final fb_auth.FirebaseAuth _auth = fb_auth.FirebaseAuth.instance;
+  final ApiService _api = apiService;
+
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
@@ -29,27 +32,66 @@ class _BookingScreenState extends State<BookingScreen> {
   void initState() {
     super.initState();
     _paymentService.initialize(_handleSuccess, _handleFailure, _handleWallet);
-    
-    // Prefill user data
-    final user = _supabase.auth.currentUser;
+
+    final user = _auth.currentUser;
     if (user != null) {
-      _nameController.text = user.userMetadata?['full_name'] ?? '';
+      _nameController.text = user.displayName ?? '';
       _emailController.text = user.email ?? '';
+      _phoneController.text = user.phoneNumber ?? '';
     }
   }
-  
-  final TextEditingController _emailController = TextEditingController();
 
-  void _handleSuccess(PaymentSuccessResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Booking Confirmed Successfully!'), backgroundColor: Colors.green),
-    );
-    Navigator.popUntil(context, (route) => route.isFirst);
+  void _handleSuccess(PaymentSuccessResponse response) async {
+    final bookingData = {
+      'service': {
+        'serviceId': widget.service.id,
+        'name': widget.service.name,
+        'category': widget.service.category,
+        'icon': widget.service.icon.codePoint.toString(),
+      },
+      'address': {
+        'street': _addressController.text,
+        'area': '',
+        'city': 'Bengaluru',
+      },
+      'schedule': {
+        'date': _selectedDate?.toIso8601String().split('T')[0] ?? '',
+        'time': _selectedTime?.format(context) ?? '',
+      },
+      'pricing': {
+        'basePrice': widget.service.startingPrice,
+        'totalPrice': widget.service.startingPrice,
+      },
+      'payment': {
+        'method': 'online',
+        'status': 'paid',
+        'transactionId': response.paymentId ?? '',
+      },
+    };
+
+    try {
+      await _api.createBooking(bookingData);
+    } catch (e) {
+      debugPrint('Booking API error: $e');
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Booking Confirmed Successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.popUntil(context, (route) => route.isFirst);
+    }
   }
 
   void _handleFailure(PaymentFailureResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text('Payment Failed: ${response.message}'),
+        backgroundColor: Colors.red,
+      ),
     );
   }
 
@@ -67,30 +109,107 @@ class _BookingScreenState extends State<BookingScreen> {
 
   void _initiatePayment() {
     if (_selectedDate == null || _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a date and time slot')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a date and time slot')),
+      );
       return;
     }
     if (_addressController.text.isEmpty || _phoneController.text.isEmpty) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all details')));
-       return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please fill all details')));
+      return;
     }
 
-    _paymentService.openCheckout(
-      amount: widget.service.startingPrice,
-      contact: _phoneController.text,
-      email: _emailController.text,
-      description: 'Booking for ${widget.service.name}',
-    );
+    // _paymentService.openCheckout(
+    //   amount: widget.service.startingPrice,
+    //   contact: _phoneController.text,
+    //   email: _emailController.text,
+    //   description: 'Booking for ${widget.service.name}',
+    // );
+    
+    // Simulating Payment Success for testing to store data in MongoDB directly
+    _processBooking('mock_transaction_123');
+  }
+
+  void _processBooking(String transactionId) async {
+    final bookingData = {
+      'service': {
+        'serviceId': widget.service.id,
+        'name': widget.service.name,
+        'category': widget.service.category,
+        'icon': widget.service.icon.codePoint.toString(),
+      },
+      'address': {
+        'street': _addressController.text,
+        'area': '',
+        'city': 'Bengaluru',
+      },
+      'schedule': {
+        'date': _selectedDate?.toIso8601String().split('T')[0] ?? '',
+        'time': _selectedTime?.format(context) ?? '',
+      },
+      'pricing': {
+        'basePrice': widget.service.startingPrice,
+        'totalPrice': widget.service.startingPrice,
+      },
+      'payment': {
+        'method': 'online',
+        'status': 'paid',
+        'transactionId': transactionId,
+      },
+    };
+
+    try {
+      await _api.createBooking(bookingData);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Booking Confirmed Successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating booking: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isVehicle = widget.service.category == 'Vehicle';
+    final bool isVehicle = widget.service.category == 'Vehicle Care';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF9),
       appBar: AppBar(
-        title: Text('Complete Booking', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/logo_icon.png',
+              width: 28,
+              height: 28,
+              errorBuilder: (c, e, s) =>
+                  Icon(Icons.bolt_rounded, color: AppTheme.primaryColor),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'BlinKlean',
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -101,36 +220,68 @@ class _BookingScreenState extends State<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Service Summary Card (Stitch Design)
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
+                  colors: [
+                    AppTheme.primaryColor,
+                    AppTheme.primaryColor.withValues(alpha: 0.8),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
-                  BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
                 ],
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                    child: Icon(widget.service.icon, color: Colors.white, size: 32),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: widget.service.buildIcon(
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.service.name, style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text(
+                          widget.service.name,
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('Order Amount', style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
-                        Text('₹${widget.service.startingPrice.toInt()}', style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+                        Text(
+                          'Order Amount',
+                          style: GoogleFonts.outfit(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          '₹${widget.service.startingPrice.toInt()}',
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -141,13 +292,32 @@ class _BookingScreenState extends State<BookingScreen> {
             const SizedBox(height: 40),
             _buildSectionHeader('Personal Details'),
             const SizedBox(height: 20),
-            _buildInputField(_nameController, 'Full Name', Icons.person_outline_rounded),
+            _buildInputField(
+              _nameController,
+              'Full Name',
+              Icons.person_outline_rounded,
+            ),
             const SizedBox(height: 16),
-            _buildInputField(_phoneController, 'Phone Number', Icons.phone_android_rounded, keyboardType: TextInputType.phone),
+            _buildInputField(
+              _phoneController,
+              'Phone Number',
+              Icons.phone_android_rounded,
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 16),
-            _buildInputField(_emailController, 'Email Address', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            _buildInputField(
+              _emailController,
+              'Email Address',
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 16),
-            _buildInputField(_addressController, 'Service Address', Icons.location_on_outlined, maxLines: 2),
+            _buildInputField(
+              _addressController,
+              'Service Address',
+              Icons.location_on_outlined,
+              maxLines: 2,
+            ),
 
             const SizedBox(height: 40),
             _buildSectionHeader('Schedule Appointment'),
@@ -156,30 +326,41 @@ class _BookingScreenState extends State<BookingScreen> {
               children: [
                 Expanded(
                   child: _buildPickerCard(
-                    Icons.calendar_today_rounded, 
-                    _selectedDate == null ? 'Select Date' : '${_selectedDate!.toLocal()}'.split(' ')[0],
+                    Icons.calendar_today_rounded,
+                    _selectedDate == null
+                        ? 'Select Date'
+                        : '${_selectedDate!.toLocal()}'.split(' ')[0],
                     () async {
-                       final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 30)));
-                       if (d != null) setState(() => _selectedDate = d);
-                    }
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                      );
+                      if (d != null) setState(() => _selectedDate = d);
+                    },
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildPickerCard(
-                    Icons.access_time_rounded, 
-                    _selectedTime == null ? 'Select Time' : _selectedTime!.format(context),
+                    Icons.access_time_rounded,
+                    _selectedTime == null
+                        ? 'Select Time'
+                        : _selectedTime!.format(context),
                     () async {
-                       final t = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 10, minute: 0));
-                       if (t != null) setState(() => _selectedTime = t);
-                    }
+                      final t = await showTimePicker(
+                        context: context,
+                        initialTime: const TimeOfDay(hour: 10, minute: 0),
+                      );
+                      if (t != null) setState(() => _selectedTime = t);
+                    },
                   ),
                 ),
               ],
             ),
 
             const SizedBox(height: 40),
-            // Requirement Reminder
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -193,10 +374,13 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
-                      isVehicle 
-                        ? 'Reminder: No water or electricity required from your side.'
-                        : 'Reminder: Customer provides water/electricity.',
-                      style: GoogleFonts.outfit(fontSize: 13, color: Colors.orange.shade900),
+                      isVehicle
+                          ? 'Reminder: No water or electricity required from your side.'
+                          : 'Reminder: Customer provides water/electricity.',
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        color: Colors.orange.shade900,
+                      ),
                     ),
                   ),
                 ],
@@ -211,7 +395,12 @@ class _BookingScreenState extends State<BookingScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20)],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 20,
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -219,8 +408,21 @@ class _BookingScreenState extends State<BookingScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total Payable', style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.subtleColor)),
-                Text('₹${widget.service.startingPrice.toInt()}', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                Text(
+                  'Total Payable',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: AppTheme.subtleColor,
+                  ),
+                ),
+                Text(
+                  '₹${widget.service.startingPrice.toInt()}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -231,12 +433,20 @@ class _BookingScreenState extends State<BookingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   elevation: 8,
                   shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
                 ),
                 onPressed: _initiatePayment,
-                child: Text('Confirm & Pay', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Confirm & Pay',
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
@@ -246,14 +456,35 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _buildSectionHeader(String title) {
-    return Text(title, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5));
+    return Text(
+      title,
+      style: GoogleFonts.outfit(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        letterSpacing: -0.5,
+      ),
+    );
   }
 
-  Widget _buildInputField(TextEditingController controller, String label, IconData icon, {TextInputType? keyboardType, int maxLines = 1}) {
+  Widget _buildInputField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType? keyboardType,
+    int maxLines = 1,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.subtleColor, letterSpacing: 1)),
+        Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: AppTheme.subtleColor,
+            letterSpacing: 1,
+          ),
+        ),
         const SizedBox(height: 10),
         TextField(
           controller: controller,
@@ -264,8 +495,17 @@ class _BookingScreenState extends State<BookingScreen> {
             prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 20),
             filled: true,
             fillColor: Colors.white,
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade100)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: Colors.grey.shade100),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 2,
+              ),
+            ),
           ),
         ),
       ],
@@ -286,7 +526,13 @@ class _BookingScreenState extends State<BookingScreen> {
           children: [
             Icon(icon, color: AppTheme.primaryColor, size: 24),
             const SizedBox(height: 8),
-            Text(label, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppTheme.textColor)),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textColor,
+              ),
+            ),
           ],
         ),
       ),

@@ -77,3 +77,8 @@ web/manifest.json.tmp
 windows/flutter/ephemeral/
 windows/flutter/generated_plugin_registrant.h
 windows/flutter/generated_plugins.cmake
+
+# Backend related
+backend/node_modules/
+backend/.env
+backend/.env.local

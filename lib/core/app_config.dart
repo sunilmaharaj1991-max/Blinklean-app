@@ -5,7 +5,7 @@ class AppConfig {
 
   // API Configuration
   static const String baseUrl =
-      'https://your-backend-url.onrender.com'; // Replace with actual URL
+      'https://blinklean-api.onrender.com'; // Replace with actual URL
   static const String apiVersion = 'v1';
   static const String apiBaseUrl = '$baseUrl/api/$apiVersion';
 

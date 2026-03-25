@@ -1,3 +1,3 @@
 class ApiConfig {
-  static const String baseUrl = "https://your-backend-url.onrender.com";
+  static const String baseUrl = "https://blinklean-api.onrender.com";
 }

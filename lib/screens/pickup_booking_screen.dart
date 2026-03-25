@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/scrap_item_model.dart';
-import '../services/whatsapp_service.dart';
+import '../services/api_service.dart';
+import '../core/app_theme.dart';
 
 class PickupBookingScreen extends StatefulWidget {
   final List<ScrapItemModel> items;
@@ -15,7 +16,8 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   final _addressController = TextEditingController();
-  final WhatsappService _whatsappService = WhatsappService();
+  final ApiService _apiService = apiService;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -23,7 +25,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
     super.dispose();
   }
 
-  void _contactOnWhatsApp() async {
+  void _confirmBooking() async {
     if (_addressController.text.isEmpty ||
         _selectedDate == null ||
         _selectedTime == null) {
@@ -35,20 +37,31 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     try {
-      await _whatsappService.sendScrapPickupRequest(
-        items: widget.items,
-        address: _addressController.text,
-        date: '${_selectedDate!.toLocal()}'.split(' ')[0],
-        time: _selectedTime!.format(context),
-      );
+      final pickupData = {
+        'items': widget.items.map((item) => {
+          'category': item.category,
+          'weight': item.estimatedWeight,
+        }).toList(),
+        'address': {
+          'street': _addressController.text,
+          'city': 'Bengaluru',
+        },
+        'schedule': {
+          'date': '${_selectedDate!.toLocal()}'.split(' ')[0],
+          'time': _selectedTime!.format(context),
+        },
+        'status': 'pending',
+      };
+
+      await _apiService.createScrapPickup(pickupData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Please send the message in WhatsApp to confirm your scrap pickup request.',
-            ),
+            content: Text('Your scrap pickup has been scheduled successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -58,11 +71,13 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to open WhatsApp: $e'),
+            content: Text('Failed to book pickup: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -144,11 +159,13 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
-                onPressed: _contactOnWhatsApp,
-                icon: const Icon(Icons.message),
-                label: const Text('Contact on WhatsApp'),
+                onPressed: _isLoading ? null : _confirmBooking,
+                icon: _isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                    : const Icon(Icons.check_circle_outline),
+                label: Text(_isLoading ? 'Booking...' : 'Confirm Booking'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
+                  backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                 ),
               ),

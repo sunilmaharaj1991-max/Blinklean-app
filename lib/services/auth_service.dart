@@ -1,18 +1,21 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:google_sign_in/google_sign_in.dart';
+import 'api_service.dart';
 
 class AuthService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final fb_auth.FirebaseAuth _firebaseAuth = fb_auth.FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  // Get current user
-  User? get currentUser => _supabase.auth.currentUser;
-
-  // Stream of auth state changes
-  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
-
-  // Sign in with Email and Password
-  Future<AuthResponse> signInWithEmail(String email, String password) async {
+  fb_auth.User? get currentUser => _firebaseAuth.currentUser;
+  Stream<fb_auth.User?> get authStateChanges =>
+      _firebaseAuth.authStateChanges();
+  Future<fb_auth.UserCredential?> signInWithEmail(
+    String email,
+    String password,
+  ) async {
     try {
-      return await _supabase.auth.signInWithPassword(
+      return await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -21,64 +24,119 @@ class AuthService {
     }
   }
 
-  // Register with Email, Password and User Details
-  Future<AuthResponse> registerWithEmail({
+  Future<fb_auth.UserCredential> registerWithEmail({
     required String email,
     required String password,
     required String name,
-    required String phone,
-    required String address,
+    String? phone,
+    String? address,
   }) async {
     try {
-      final AuthResponse response = await _supabase.auth.signUp(
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
-        data: {
-          'full_name': name,
-          'phone': phone,
-        },
       );
 
-      // Save additional user details to 'users' table in public schema
-      if (response.user != null) {
-        await _supabase.from('users').upsert({
-          'id': response.user!.id,
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'address': address,
-          'created_at': DateTime.now().toIso8601String(),
-          'bookings_count': 0,
-        });
-      }
+      await credential.user?.updateDisplayName(name);
 
-      return response;
+      await apiService.syncUser(name: name, email: email, phone: phone);
+
+      return credential;
     } catch (e) {
       rethrow;
     }
   }
 
-  // Sign out
-  Future<void> signOut() async {
-    await _supabase.auth.signOut();
-  }
 
-  // Reset Password
-  Future<void> resetPassword(String email) async {
-    await _supabase.auth.resetPasswordForEmail(email);
-  }
-
-  // Get User Profile Data
-  Future<Map<String, dynamic>?> getUserProfile(String uid) async {
+  Future<fb_auth.UserCredential?> signInWithGoogle() async {
     try {
-      final data = await _supabase
-          .from('users')
-          .select()
-          .eq('id', uid)
-          .single();
-      return data;
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final fb_auth.AuthCredential credential =
+          fb_auth.GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
+
+      await apiService.syncUser(
+        name: userCredential.user?.displayName,
+        email: userCredential.user?.email,
+      );
+
+      return userCredential;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> signOut() async {
+    await _firebaseAuth.signOut();
+    await _googleSignIn.signOut();
+  }
+
+  Future<void> resetPassword(String email) async {
+    await _firebaseAuth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    try {
+      return await apiService.getUserProfile();
     } catch (e) {
       return null;
     }
+  }
+
+  String? _verificationId;
+  int? _resendToken; // ignore: unused_field
+
+  Future<void> sendVerificationOTP(String phoneNumber) async {
+    await _firebaseAuth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (fb_auth.PhoneAuthCredential credential) async {
+        await _firebaseAuth.signInWithCredential(credential);
+      },
+      verificationFailed: (fb_auth.FirebaseAuthException e) {
+        throw Exception(e.message ?? 'Phone verification failed');
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        _verificationId = verificationId;
+        _resendToken = resendToken;
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {
+        _verificationId = verificationId;
+      },
+    );
+  }
+
+  Future<fb_auth.UserCredential> verifyPhoneOTP(
+    String phoneNumber,
+    String otp,
+  ) async {
+    if (_verificationId == null) {
+      throw Exception('Please request OTP first');
+    }
+
+    final credential = fb_auth.PhoneAuthProvider.credential(
+      verificationId: _verificationId!,
+      smsCode: otp,
+    );
+
+    final userCredential = await _firebaseAuth.signInWithCredential(credential);
+
+    await apiService.syncUser(
+      name: userCredential.user?.displayName,
+      email: userCredential.user?.email,
+      phone: phoneNumber,
+    );
+
+    return userCredential;
   }
 }
