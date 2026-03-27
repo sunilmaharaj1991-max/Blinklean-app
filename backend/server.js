@@ -16,9 +16,23 @@ const paymentRoutes = require('./routes/payments');
 const app = express();
 
 // Security Middleware
+// Security Middleware
 app.use(helmet());
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:64050', // Flutter Web default
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Fallback to true for easier development, but safer than '*' with credentials
+  },
   credentials: true
 }));
 

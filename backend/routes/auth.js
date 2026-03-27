@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { syncFirebaseUser, getCurrentUser, updateUser, updateAddress, getUserStats } = require('../controllers/userController');
-const { verifyFirebaseToken } = require('../middleware/auth');
+const { syncAmplifyUser, getCurrentUser, updateUser, updateAddress, getUserStats } = require('../controllers/userController');
+const { verifyCognitoToken } = require('../middleware/auth');
 
-// Sync user after Firebase auth (creates or updates user in MongoDB)
-router.post('/sync', verifyFirebaseToken, syncFirebaseUser);
+// Sync user after Amplify auth (creates or updates user in MongoDB)
+router.post('/sync', verifyCognitoToken, syncAmplifyUser);
 
 // Get current user profile
-router.get('/me', verifyFirebaseToken, getCurrentUser);
+router.get('/me', verifyCognitoToken, getCurrentUser);
 
 // Update user profile
-router.put('/me', verifyFirebaseToken, updateUser);
+router.put('/me', verifyCognitoToken, updateUser);
 
 // Update user address
-router.put('/address', verifyFirebaseToken, updateAddress);
+router.put('/address', verifyCognitoToken, updateAddress);
 
 // Get user stats
-router.get('/stats', verifyFirebaseToken, getUserStats);
+router.get('/stats', verifyCognitoToken, getUserStats);
 
 module.exports = router;

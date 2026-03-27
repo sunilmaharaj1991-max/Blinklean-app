@@ -5,6 +5,7 @@ import '../models/service_model.dart';
 import 'scrap_screen.dart';
 import 'all_services_screen.dart';
 import 'service_detail_screen.dart';
+import 'location_selection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -91,17 +92,17 @@ class _HomeScreenState extends State<HomeScreen>
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF009543), Color(0xFF00ADEF)],
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B)], // Premium Dark Slate
         ),
         borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
+          bottomLeft: Radius.circular(44),
+          bottomRight: Radius.circular(44),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.35),
-            blurRadius: 25,
-            offset: const Offset(0, 12),
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
@@ -114,30 +115,23 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Row(
                   children: [
-                    // Logo Container
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 48,
+                      height: 48,
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
+                            color: Colors.white.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                          )
                         ],
                       ),
-                      child: Center(
-                        child: Icon(
-                          Icons.bolt_rounded,
-                          color: AppTheme.primaryColor,
-                          size: 28,
-                        ),
-                      ),
+                      child: Image.asset('assets/images/logo_icon.png'),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -146,14 +140,29 @@ class _HomeScreenState extends State<HomeScreen>
                           style: GoogleFonts.outfit(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
-                            fontSize: 20,
+                            fontSize: 22,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        Text(
-                          'Premium Home Services',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white70,
-                            fontSize: 11,
+                        InkWell(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (c) => const LocationSelectionScreen()),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on_rounded, color: AppTheme.secondaryColor, size: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Check Availability',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white60,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -162,171 +171,181 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 Row(
                   children: [
-                    _buildHeaderButton(Icons.search_rounded),
-                    const SizedBox(width: 10),
-                    _buildHeaderButton(Icons.notifications_rounded),
+                    _buildHeaderAction(Icons.search_rounded),
+                    const SizedBox(width: 12),
+                    _buildHeaderAction(Icons.notifications_none_rounded),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "India's 1st",
-                  style: GoogleFonts.outfit(
-                    color: Colors.white54,
-                    fontSize: 13,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    "INDIA'S 1ST AI CLEAN",
+                    style: GoogleFonts.outfit(
+                      color: AppTheme.primaryColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
+                    ),
                   ),
                 ),
+                const SizedBox(height: 12),
                 Text(
-                  'AI Powered QuickClean',
+                  'Expert Care for\nYour Living Space',
                   style: GoogleFonts.outfit(
                     color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                    letterSpacing: -1,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 12),
                 Text(
-                  'On-demand home services to empower\nurban households',
+                  'On-demand professional cleaning and maintenance services powered by smart tech.',
                   style: GoogleFonts.outfit(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: Colors.white54,
                     fontSize: 12,
-                    height: 1.4,
+                    height: 1.5,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 22),
-          // Stats Row
+          const SizedBox(height: 32),
+          // Floating Stats Row
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(18),
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white10),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem('5K+', 'Services'),
-                _buildDivider(),
-                _buildStatItem('2K+', 'Clients'),
-                _buildDivider(),
-                _buildStatItem('4.8★', 'Rating'),
-                _buildDivider(),
-                _buildStatItem('100%', 'Eco'),
+                _buildModernStat('5K+', 'Bookings'),
+                _buildVerticalDivider(),
+                _buildModernStat('4.9★', 'Rating'),
+                _buildVerticalDivider(),
+                _buildModernStat('100%', 'Eco-Wise'),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderButton(IconData icon) {
+  Widget _buildHeaderAction(IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white10),
       ),
-      child: Icon(icon, color: Colors.white, size: 22),
+      child: Icon(icon, color: Colors.white, size: 20),
     );
   }
 
-  Widget _buildStatItem(String value, String label) {
+  Widget _buildModernStat(String value, String label) {
     return Column(
       children: [
         Text(
           value,
           style: GoogleFonts.outfit(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
           ),
         ),
         Text(
-          label,
+          label.toUpperCase(),
           style: GoogleFonts.outfit(
-            color: Colors.white.withValues(alpha: 0.55),
-            fontSize: 10,
+            color: Colors.white38,
+            fontSize: 8,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildVerticalDivider() {
     return Container(
-      height: 28,
+      height: 30,
       width: 1,
-      color: Colors.white.withValues(alpha: 0.25),
+      color: Colors.white12,
     );
   }
 
   Widget _buildHomeTab() {
+    final popularServices = ServiceModel.getAllServices().take(4).toList();
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(18),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle(
-            'Popular Services',
-            Icons.local_fire_department_rounded,
-            const Color(0xFFFF6B35),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 170,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildPopularCard(
-                  '1BHK\nDeep Clean',
-                  Icons.home_rounded,
-                  const Color(0xFF00C853),
-                  'Professional cleaning',
-                ),
-                _buildPopularCard(
-                  '2BHK\nDeep Clean',
-                  Icons.apartment_rounded,
-                  const Color(0xFF00BFA5),
-                  'Complete home care',
-                ),
-                _buildPopularCard(
-                  'Sofa\nCleaning',
-                  Icons.weekend_rounded,
-                  const Color(0xFF7C4DFF),
-                  'Stain removal',
-                ),
-                _buildPopularCard(
-                  'Kitchen\nCleaning',
-                  Icons.kitchen_rounded,
-                  const Color(0xFFFF6B35),
-                  'Grease-free kitchen',
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: _buildSectionTitle(
+              'Popular Services',
+              Icons.local_fire_department_rounded,
+              const Color(0xFFFF5722),
             ),
           ),
-          const SizedBox(height: 28),
-          _buildSectionTitle(
-            'Home Cleaning',
-            Icons.home_work_rounded,
-            AppTheme.primaryColor,
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 240,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              itemCount: popularServices.length,
+              itemBuilder: (context, index) {
+                final service = popularServices[index];
+                return _buildModernPopularCard(service);
+              },
+            ),
           ),
-          const SizedBox(height: 14),
-          ...ServiceModel.getHomeCleaningServices()
-              .take(4)
-              .map((s) => _buildServiceItem(s)),
+          const SizedBox(height: 32),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: _buildSectionTitle(
+              'Home Wellness',
+              Icons.spa_rounded,
+              AppTheme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: ServiceModel.getHomeCleaningServices()
+                  .take(4)
+                  .map((s) => _buildServiceItem(s))
+                  .toList(),
+            ),
+          ),
           const SizedBox(height: 16),
           Center(
             child: TextButton(
@@ -365,11 +384,84 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 100),
         ],
       ),
     );
   }
+
+  Widget _buildModernPopularCard(ServiceModel service) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (c) => ServiceDetailScreen(service: service)),
+      ),
+      child: Container(
+        width: 180,
+        margin: const EdgeInsets.only(right: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                child: Image.network(
+                  service.imageUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    service.name,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        service.formattedPrice,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_rounded, size: 14, color: Colors.grey),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildVehicleTab() {
     return SingleChildScrollView(
@@ -407,97 +499,93 @@ class _HomeScreenState extends State<HomeScreen>
         ],
       ),
     );
-  }
-
-  Widget _buildVehicleHero() {
+  }  Widget _buildVehicleHero() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      width: double.infinity,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2979FF), Color(0xFF00B0FF)],
-        ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2979FF).withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: const Color(0xFF2979FF).withValues(alpha: 0.2),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Text('🚗', style: TextStyle(fontSize: 36)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Waterless Car Care',
-                      style: GoogleFonts.outfit(
-                        fontSize: 19,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Save 150L of water with every wash',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: Colors.white70,
-                      ),
-                    ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Stack(
+          children: [
+            Image.network(
+              'https://images.unsplash.com/photo-1552933529-e359b24772ff?auto=format&fit=crop&q=80&w=1200',
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    const Color(0xFF1E293B).withValues(alpha: 0.9),
+                    const Color(0xFF1E293B).withValues(alpha: 0.4),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildVehicleFeature(Icons.water_drop_outlined, 'Waterless'),
-                Container(height: 26, width: 1, color: Colors.grey.shade300),
-                _buildVehicleFeature(Icons.eco_outlined, 'Eco-Friendly'),
-                Container(height: 26, width: 1, color: Colors.grey.shade300),
-                _buildVehicleFeature(Icons.speed_rounded, 'Quick Service'),
-              ],
+            Positioned(
+              left: 24,
+              top: 0,
+              bottom: 0,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2979FF).withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'WATERLESS TECH',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Precision\nVehicle Care',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Save 150L water per wash.',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildVehicleFeature(IconData icon, String text) {
-    return Column(
-      children: [
-        Icon(icon, color: const Color(0xFF2979FF), size: 22),
-        const SizedBox(height: 4),
-        Text(
-          text,
-          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
-  }
 
   Widget _buildLaundryTab() {
     return SingleChildScrollView(
@@ -522,87 +610,87 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildLaundryHero() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      width: double.infinity,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF6D00), Color(0xFFFFAB40)],
-        ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF6D00).withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: const Color(0xFFFF6D00).withValues(alpha: 0.2),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Text('👕', style: TextStyle(fontSize: 36)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Professional Laundry',
-                      style: GoogleFonts.outfit(
-                        fontSize: 19,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Premium wash, fold & iron services',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: Colors.white70,
-                      ),
-                    ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Stack(
+          children: [
+            Image.network(
+              'https://images.unsplash.com/photo-1545173159-bb1d333af55d?auto=format&fit=crop&q=80&w=1200',
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    const Color(0xFF431407).withValues(alpha: 0.8),
+                    const Color(0xFF431407).withValues(alpha: 0.3),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children:
-                ['Eco Detergents', 'Hygienic', 'Neatly Folded', '24hr Delivery']
-                    .map(
-                      (chip) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          chip,
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+            ),
+            Positioned(
+              left: 24,
+              top: 0,
+              bottom: 0,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6D00).withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'HYGIENIC WASH',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
                       ),
-                    )
-                    .toList(),
-          ),
-        ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Premium\nLaundry Care',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '24hr doorstep delivery.',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -643,86 +731,99 @@ class _HomeScreenState extends State<HomeScreen>
         MaterialPageRoute(builder: (c) => const ScrapScreen()),
       ),
       child: Container(
-        padding: const EdgeInsets.all(22),
+        width: double.infinity,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF00BFA5), Color(0xFF00897B)],
-          ),
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF00BFA5).withValues(alpha: 0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: const Color(0xFF00BFA5).withValues(alpha: 0.2),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text('♻️', style: TextStyle(fontSize: 36)),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sell Your Scrap',
-                        style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Instant pickup & fair price!',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: Stack(
+            children: [
+              Image.network(
+                'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=1200',
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      const Color(0xFF064E3B).withValues(alpha: 0.8),
+                      const Color(0xFF064E3B).withValues(alpha: 0.3),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.message_rounded,
-                    color: Color(0xFF00BFA5),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Book Pickup on WhatsApp',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF00BFA5),
+              Positioned(
+                left: 24,
+                top: 0,
+                bottom: 0,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00BFA5).withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'ECO RECLAMATION',
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      'Turn Scrap\nInto Value',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'AI-Powered Fair Pricing.',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.arrow_forward_rounded, color: Color(0xFF00BFA5)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -892,58 +993,6 @@ class _HomeScreenState extends State<HomeScreen>
           style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold),
         ),
       ],
-    );
-  }
-
-  Widget _buildPopularCard(
-    String name,
-    IconData icon,
-    Color color,
-    String subtitle,
-  ) {
-    return Container(
-      width: 125,
-      margin: const EdgeInsets.only(right: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(fontSize: 9, color: AppTheme.subtleColor),
-          ),
-        ],
-      ),
     );
   }
 

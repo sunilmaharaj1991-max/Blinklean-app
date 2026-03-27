@@ -1,0 +1,23 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-blinklean-dev-4f4c7-authRole",
+      "UnauthRoleArn": "arn:aws:iam::758388042813:role/amplify-blinklean-dev-4f4c7-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::758388042813:role/amplify-blinklean-dev-4f4c7-authRole",
+      "Region": "eu-north-1",
+      "DeploymentBucketName": "amplify-blinklean-dev-4f4c7-deployment",
+      "UnauthRoleName": "amplify-blinklean-dev-4f4c7-unauthRole",
+      "StackName": "amplify-blinklean-dev-4f4c7",
+      "StackId": "arn:aws:cloudformation:eu-north-1:758388042813:stack/amplify-blinklean-dev-4f4c7/e0f79ea0-2921-11f1-b527-06374be52085",
+      "AmplifyAppId": "d1gen2vs3n6srq"
+    },
+    "categories": {
+      "storage": {
+        "s375b0da34": {}
+      },
+      "auth": {
+        "blinkleanPhoneAuth": {}
+      }
+    }
+  }
+}

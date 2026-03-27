@@ -7,9 +7,9 @@ db.createCollection("users", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["firebaseUid", "email", "name", "phone"],
+      required: ["amplifyUid", "email", "name", "phone"],
       properties: {
-        firebaseUid: { bsonType: "string" },
+        amplifyUid: { bsonType: "string" },
         email: { bsonType: "string" },
         name: { bsonType: "string" },
         phone: { bsonType: "string" },
@@ -40,7 +40,7 @@ db.createCollection("users", {
   }
 });
 
-db.users.createIndex({ "firebaseUid": 1 }, { unique: true });
+db.users.createIndex({ "amplifyUid": 1 }, { unique: true });
 db.users.createIndex({ "email": 1 }, { unique: true });
 db.users.createIndex({ "phone": 1 });
 
@@ -167,9 +167,9 @@ db.createCollection("providers", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["firebaseUid", "name", "phone"],
+      required: ["amplifyUid", "name", "phone"],
       properties: {
-        firebaseUid: { bsonType: "string" },
+        amplifyUid: { bsonType: "string" },
         name: { bsonType: "string" },
         phone: { bsonType: "string" },
         email: { bsonType: "string" },
@@ -217,7 +217,7 @@ db.createCollection("providers", {
   }
 });
 
-db.providers.createIndex({ "firebaseUid": 1 }, { unique: true });
+db.providers.createIndex({ "amplifyUid": 1 }, { unique: true });
 db.providers.createIndex({ "services": 1 });
 db.providers.createIndex({ "status": 1 });
 db.providers.createIndex({ "location": "2dsphere" });

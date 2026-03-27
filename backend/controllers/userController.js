@@ -1,15 +1,16 @@
 const { User } = require('../models');
 
-const syncFirebaseUser = async (req, res) => {
+const syncAmplifyUser = async (req, res) => {
   try {
-    const { uid, name, email, phone } = req.body;
+    const uid = req.user.uid;
+    const { name, email, phone } = req.body;
     
     if (!uid) {
-      return res.status(400).json({ error: 'Firebase UID is required' });
+      return res.status(400).json({ error: 'Amplify UID is required from token' });
     }
 
     // Check if user exists
-    let user = await User.findOne({ firebaseUid: uid });
+    let user = await User.findOne({ amplifyUid: uid });
     
     if (user) {
       // Update existing user
@@ -21,7 +22,7 @@ const syncFirebaseUser = async (req, res) => {
     } else {
       // Create new user
       user = new User({
-        firebaseUid: uid,
+        amplifyUid: uid,
         name: name || 'User',
         email: email || '',
         phone: phone || '',
@@ -42,7 +43,7 @@ const syncFirebaseUser = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user.uid });
+    const user = await User.findOne({ amplifyUid: req.user.uid });
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -67,7 +68,7 @@ const updateUser = async (req, res) => {
     }
 
     const user = await User.findOneAndUpdate(
-      { firebaseUid: req.user.uid },
+      { amplifyUid: req.user.uid },
       updateData,
       { new: true }
     );
@@ -87,7 +88,7 @@ const updateAddress = async (req, res) => {
     const { address } = req.body;
     
     const user = await User.findOneAndUpdate(
-      { firebaseUid: req.user.uid },
+      { amplifyUid: req.user.uid },
       { address },
       { new: true }
     );
@@ -104,7 +105,7 @@ const updateAddress = async (req, res) => {
 
 const getUserStats = async (req, res) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user.uid });
+    const user = await User.findOne({ amplifyUid: req.user.uid });
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -117,7 +118,7 @@ const getUserStats = async (req, res) => {
 };
 
 module.exports = {
-  syncFirebaseUser,
+  syncAmplifyUser,
   getCurrentUser,
   updateUser,
   updateAddress,

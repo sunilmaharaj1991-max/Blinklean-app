@@ -1,0 +1,12 @@
+{
+  "resourceName": "s375b0da34",
+  "policyUUID": "75b0da34",
+  "bucketName": "blinklean611e74285ae9405797db6e09a72d4292",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}

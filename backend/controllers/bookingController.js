@@ -5,7 +5,7 @@ const createBooking = async (req, res) => {
     const bookingData = req.body;
     
     // Get user from Firebase UID
-    const user = await User.findOne({ firebaseUid: req.user.uid });
+    const user = await User.findOne({ amplifyUid: req.user.uid });
     if (!user) {
       return res.status(404).json({ error: 'User not found. Please sync your profile first.' });
     }
@@ -32,7 +32,7 @@ const createBooking = async (req, res) => {
 
 const getUserBookings = async (req, res) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user.uid });
+    const user = await User.findOne({ amplifyUid: req.user.uid });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

@@ -3,8 +3,39 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import 'booking_history_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+import 'package:amplify_flutter/amplify_flutter.dart';
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String _userName = 'Guest User';
+  String _userPhone = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserAttributes();
+  }
+
+  Future<void> _loadUserAttributes() async {
+    try {
+      final attributes = await Amplify.Auth.fetchUserAttributes();
+      for (var attr in attributes) {
+        if (attr.userAttributeKey == AuthUserAttributeKey.name) {
+          setState(() => _userName = attr.value);
+        } else if (attr.userAttributeKey == AuthUserAttributeKey.phoneNumber) {
+          setState(() => _userPhone = attr.value);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading user attributes: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +122,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Guest User',
+                      _userName,
                       style: GoogleFonts.outfit(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -109,7 +140,7 @@ class ProfileScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        'Tap to login',
+                        _userPhone.isNotEmpty ? _userPhone : 'Authenticated',
                         style: GoogleFonts.outfit(
                           fontSize: 12,
                           color: Colors.white,
@@ -173,13 +204,42 @@ class ProfileScreen extends StatelessWidget {
                         Icons.location_on_outlined,
                         'My Addresses',
                         'Manage delivery addresses',
-                        () {},
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Address management coming soon!')),
+                          );
+                        },
                       ),
                       _buildMenuItem(
                         Icons.payment_rounded,
                         'Payment Methods',
                         'Add or remove payment options',
-                        () {},
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Payments are handled during service.')),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        Icons.logout_rounded,
+                        'Sign Out',
+                        'Securely log out of your account',
+                        () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (c) => AlertDialog(
+                              title: const Text('Sign Out'),
+                              content: const Text('Are you sure you want to log out?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Logout')),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await Amplify.Auth.signOut();
+                          }
+                        },
                       ),
                     ]),
                     const SizedBox(height: 20),
@@ -209,19 +269,47 @@ class ProfileScreen extends StatelessWidget {
                         Icons.help_outline_rounded,
                         'Help & FAQ',
                         'Get help with your orders',
-                        () {},
+                        () {
+                          showAboutDialog(
+                            context: context,
+                            applicationName: 'BlinKlean',
+                            applicationVersion: '1.0.0',
+                            children: [
+                              const Text('For help, please contact support@blinklean.com'),
+                            ],
+                          );
+                        },
                       ),
                       _buildMenuItem(
                         Icons.chat_rounded,
                         'Contact Us',
                         'Reach out to our team',
-                        () {},
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('WhatsApp Support: +91 999 999 9999')),
+                          );
+                        },
                       ),
                       _buildMenuItem(
                         Icons.info_outline_rounded,
                         'About BlinKlean',
                         'Learn more about us',
-                        () {},
+                        () {
+                           showModalBottomSheet(
+                             context: context,
+                             builder: (c) => Container(
+                               padding: const EdgeInsets.all(24),
+                               child: Column(
+                                 mainAxisSize: MainAxisSize.min,
+                                 children: [
+                                   Text('About BlinKlean', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+                                   const SizedBox(height: 12),
+                                   const Text('India\'s 1st AI Powered QuickClean residential and vehicle platform. We specialize in waterless detailing and normal home cleaning.'),
+                                 ],
+                               ),
+                             ),
+                           );
+                        },
                       ),
                     ]),
                     const SizedBox(height: 24),

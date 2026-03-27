@@ -1,0 +1,51 @@
+{
+  "version": "1",
+  "cognitoConfig": {
+    "identityPoolName": "blinklean_identitypool_phone",
+    "allowUnauthenticatedIdentities": false,
+    "resourceNameTruncated": "blinklphone",
+    "userPoolName": "blinklean_userpool_phone",
+    "autoVerifiedAttributes": [
+      "phone_number"
+    ],
+    "mfaConfiguration": "OFF",
+    "mfaTypes": [
+      "SMS Text Message"
+    ],
+    "smsAuthenticationMessage": "Your authentication code is {####}",
+    "smsVerificationMessage": "Your verification code is {####}",
+    "emailVerificationSubject": "Your verification code",
+    "emailVerificationMessage": "Your verification code is {####}",
+    "defaultPasswordPolicy": false,
+    "passwordPolicyMinLength": 8,
+    "passwordPolicyCharacters": [],
+    "requiredAttributes": [
+      "phone_number",
+      "name"
+    ],
+    "aliasAttributes": [],
+    "userpoolClientGenerateSecret": false,
+    "userpoolClientRefreshTokenValidity": 30,
+    "userpoolClientWriteAttributes": [
+      "phone_number",
+      "name"
+    ],
+    "userpoolClientReadAttributes": [
+      "phone_number",
+      "name"
+    ],
+    "userpoolClientLambdaRole": "blinklphone_userpoolclient_lambda_role",
+    "userpoolClientSetAttributes": false,
+    "sharedId": "phoneauth",
+    "resourceName": "blinkleanPhoneAuth",
+    "authSelections": "identityPoolAndUserPool",
+    "useDefault": "manual",
+    "userPoolGroupList": [],
+    "serviceName": "Cognito",
+    "usernameAttributes": [
+      "phone_number"
+    ],
+    "usernameCaseSensitive": false,
+    "useEnabledMfas": true
+  }
+}

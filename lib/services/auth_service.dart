@@ -1,88 +1,52 @@
-import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'api_service.dart';
 
 class AuthService {
-  final fb_auth.FirebaseAuth _firebaseAuth = fb_auth.FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  Future<AuthUser?> get currentUser async {
+    try {
+      return await Amplify.Auth.getCurrentUser();
+    } catch (e) {
+      return null;
+    }
+  }
 
-  fb_auth.User? get currentUser => _firebaseAuth.currentUser;
-  Stream<fb_auth.User?> get authStateChanges =>
-      _firebaseAuth.authStateChanges();
-  Future<fb_auth.UserCredential?> signInWithEmail(
-    String email,
+  Future<SignInResult?> signInWithPhone(
+    String phoneNumber,
     String password,
   ) async {
-    try {
-      return await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } catch (e) {
-      rethrow;
-    }
+    return await Amplify.Auth.signIn(username: phoneNumber, password: password);
   }
 
-  Future<fb_auth.UserCredential> registerWithEmail({
-    required String email,
+  Future<SignUpResult> registerWithPhone({
+    required String phoneNumber,
     required String password,
     required String name,
-    String? phone,
     String? address,
   }) async {
-    try {
-      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+    final userAttributes = {
+      AuthUserAttributeKey.phoneNumber: phoneNumber,
+      AuthUserAttributeKey.name: name,
+    };
 
-      await credential.user?.updateDisplayName(name);
-
-      await apiService.syncUser(name: name, email: email, phone: phone);
-
-      return credential;
-    } catch (e) {
-      rethrow;
-    }
+    return await Amplify.Auth.signUp(
+      username: phoneNumber,
+      password: password,
+      options: SignUpOptions(userAttributes: userAttributes),
+    );
   }
 
 
-  Future<fb_auth.UserCredential?> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final fb_auth.AuthCredential credential =
-          fb_auth.GoogleAuthProvider.credential(
-            accessToken: googleAuth.accessToken,
-            idToken: googleAuth.idToken,
-          );
-
-      final userCredential = await _firebaseAuth.signInWithCredential(
-        credential,
-      );
-
-      await apiService.syncUser(
-        name: userCredential.user?.displayName,
-        email: userCredential.user?.email,
-      );
-
-      return userCredential;
-    } catch (e) {
-      rethrow;
-    }
+  // Google Sign-In is handled via Authenticator or separate UI if configured
+  Future<SignInResult?> signInWithGoogle() async {
+    return await Amplify.Auth.signInWithWebUI(provider: AuthProvider.google);
   }
 
   Future<void> signOut() async {
-    await _firebaseAuth.signOut();
-    await _googleSignIn.signOut();
+    await Amplify.Auth.signOut();
   }
 
-  Future<void> resetPassword(String email) async {
-    await _firebaseAuth.sendPasswordResetEmail(email: email);
+  Future<void> hideResetPassword(String phoneNumber) async {
+    await Amplify.Auth.resetPassword(username: phoneNumber);
   }
 
   Future<Map<String, dynamic>?> getUserProfile() async {
@@ -93,50 +57,31 @@ class AuthService {
     }
   }
 
-  String? _verificationId;
-  int? _resendToken; // ignore: unused_field
-
-  Future<void> sendVerificationOTP(String phoneNumber) async {
-    await _firebaseAuth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (fb_auth.PhoneAuthCredential credential) async {
-        await _firebaseAuth.signInWithCredential(credential);
-      },
-      verificationFailed: (fb_auth.FirebaseAuthException e) {
-        throw Exception(e.message ?? 'Phone verification failed');
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        _verificationId = verificationId;
-        _resendToken = resendToken;
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        _verificationId = verificationId;
-      },
-    );
+  // Resend confirmation code for phone number
+  Future<ResendSignUpCodeResult> resendOTP(String phoneNumber) async {
+    return await Amplify.Auth.resendSignUpCode(username: phoneNumber);
   }
 
-  Future<fb_auth.UserCredential> verifyPhoneOTP(
+  // Confirm Signup using OTP for Phone Number
+  Future<SignUpResult> confirmRegistrationOTP(
     String phoneNumber,
     String otp,
   ) async {
-    if (_verificationId == null) {
-      throw Exception('Please request OTP first');
-    }
-
-    final credential = fb_auth.PhoneAuthProvider.credential(
-      verificationId: _verificationId!,
-      smsCode: otp,
+    return await Amplify.Auth.confirmSignUp(
+      username: phoneNumber,
+      confirmationCode: otp,
     );
+  }
 
-    final userCredential = await _firebaseAuth.signInWithCredential(credential);
-
-    await apiService.syncUser(
-      name: userCredential.user?.displayName,
-      email: userCredential.user?.email,
-      phone: phoneNumber,
+  // Pure OTP login without password requires Custom Auth Trigger in Cognito.
+  // For standard flows, we use signIn(phone, password).
+  Future<SignInResult> signInWithPhoneOTP(
+    String phoneNumber,
+    String password,
+  ) async {
+    return await Amplify.Auth.signIn(
+      username: phoneNumber,
+      password: password,
     );
-
-    return userCredential;
   }
 }

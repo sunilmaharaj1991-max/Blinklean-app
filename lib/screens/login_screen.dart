@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import '../services/auth_service.dart';
 import '../core/app_theme.dart';
 
-enum AuthMode { emailSignIn, emailSignUp, phoneRequest, phoneVerify }
+enum AuthStatus { idle, loading, confirming }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,189 +14,101 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
   final _otpController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final AuthService _auth = AuthService();
 
-  AuthMode _authMode = AuthMode.emailSignIn;
-  bool _isLoading = false;
-  final AuthService _authService = AuthService();
-
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    );
-    _animationController.forward();
-  }
+  AuthStatus _status = AuthStatus.idle;
+  bool _isSignUp = false;
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     _otpController.dispose();
+    _nameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _switchMode(AuthMode newMode) {
-    _animationController.reverse().then((_) {
-      setState(() => _authMode = newMode);
-      _animationController.forward();
-    });
-  }
-
-  Future<void> _submitEmailAuth() async {
+  Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    try {
-      if (_authMode == AuthMode.emailSignUp) {
-        String phoneInput = _phoneController.text.trim();
-        if (!phoneInput.startsWith('+')) phoneInput = '+91$phoneInput';
-
-        await _authService.registerWithEmail(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          name: _nameController.text.trim(),
-          phone: phoneInput,
-          address: _addressController.text.trim(),
-        );
-
-        await _authService.sendVerificationOTP(phoneInput);
-        _switchMode(AuthMode.phoneVerify);
-      } else {
-        await _authService.signInWithEmail(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
-      }
-    } catch (e) {
-      _showError(_getErrorMessage(e.toString()));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _requestPhoneOTP() async {
-    if (_phoneController.text.trim().isEmpty) {
-      _showError("Please enter a valid phone number.");
-      return;
-    }
-    setState(() => _isLoading = true);
-    try {
-      String phone = _phoneController.text.trim();
-      if (!phone.startsWith('+')) {
-        phone = '+91$phone';
-      }
-      await _authService.sendVerificationOTP(phone);
-      _switchMode(AuthMode.phoneVerify);
-    } catch (e) {
-      _showError(_getErrorMessage(e.toString()));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _verifyPhoneOTP() async {
-    if (_otpController.text.trim().isEmpty) {
-      _showError("Please enter the OTP.");
-      return;
-    }
-    setState(() => _isLoading = true);
+    
+    setState(() => _status = AuthStatus.loading);
     try {
       String phone = _phoneController.text.trim();
       if (!phone.startsWith('+')) phone = '+91$phone';
 
-      await _authService.verifyPhoneOTP(phone, _otpController.text.trim());
+      if (_isSignUp) {
+        await _auth.registerWithPhone(
+          phoneNumber: phone,
+          password: _passwordController.text.trim(),
+          name: _nameController.text.trim(),
+        );
+        _showSuccess("OTP sent to $phone. Please verify.");
+        setState(() => _status = AuthStatus.confirming);
+      } else {
+        final result = await _auth.signInWithPhone(
+          phone,
+          _passwordController.text.trim(),
+        );
+        if (result?.nextStep.signInStep == AuthSignInStep.confirmSignInWithSmsMfaCode) {
+          setState(() => _status = AuthStatus.confirming);
+        } else if (result?.isSignedIn ?? false) {
+           // Handled by Authenticator or Main Navigation
+        }
+      }
     } catch (e) {
-      _showError(_getErrorMessage(e.toString()));
+      _showError(e.toString());
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && _status != AuthStatus.confirming) {
+        setState(() => _status = AuthStatus.idle);
+      }
     }
   }
 
-  Future<void> _loginWithGoogle() async {
-    setState(() => _isLoading = true);
+  Future<void> _verifyOTP() async {
+    setState(() => _status = AuthStatus.loading);
     try {
-      await _authService.signInWithGoogle();
+      String phone = _phoneController.text.trim();
+      if (!phone.startsWith('+')) phone = '+91$phone';
+      
+      if (_isSignUp) {
+        await _auth.confirmRegistrationOTP(phone, _otpController.text.trim());
+        _showSuccess("Account verified! You can now sign in.");
+        setState(() {
+          _isSignUp = false;
+          _status = AuthStatus.idle;
+        });
+      } else {
+        // MFA verification
+        await Amplify.Auth.confirmSignIn(confirmationValue: _otpController.text.trim());
+      }
     } catch (e) {
-      _showError(_getErrorMessage(e.toString()));
+      _showError(e.toString());
+      setState(() => _status = AuthStatus.confirming);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && _status != AuthStatus.idle) {
+        setState(() => _status = AuthStatus.idle);
+      }
     }
   }
 
-  String _getErrorMessage(String error) {
-    if (error.contains('user-disabled')) {
-      return 'This account has been disabled.';
-    }
-    if (error.contains('wrong-password')) {
-      return 'Incorrect password. Please try again.';
-    }
-    if (error.contains('user-not-found')) {
-      return 'No account found with this email.';
-    }
-    if (error.contains('email-already-in-use')) {
-      return 'An account already exists with this email.';
-    }
-    if (error.contains('invalid-email')) {
-      return 'Please enter a valid email address.';
-    }
-    if (error.contains('weak-password')) {
-      return 'Password should be at least 6 characters.';
-    }
-    if (error.contains('image.png') || error.contains('DEVELOPER_ERROR')) {
-      return 'Google Sign-In requires SHA-1 fingerprint setup in Firebase Console.';
-    }
-    if (error.contains('popup_closed')) return 'Sign-In cancelled.';
-    if (error.contains('invalid-phone-number')) {
-      return 'Please enter a valid phone number.';
-    }
-    if (error.contains('quotaExceeded')) {
-      return 'Too many requests. Please try again later.';
-    }
-    if (error.contains('invalid-verification-code')) {
-      return 'Invalid OTP. Please check and try again.';
-    }
-    if (error.contains('session-expired')) {
-      return 'Session expired. Please request a new OTP.';
-    }
-    if (error.contains('credential-already-in-use')) {
-      return 'This phone number is already linked to another account.';
-    }
-    return error.split('Exception:').last.split(':').last.trim();
-  }
-
-  void _showError(String message) {
+  void _showError(String msg) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ),
+        SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
+
+  void _showSuccess(String msg) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.green),
       );
     }
   }
@@ -206,109 +120,97 @@ class _LoginScreenState extends State<LoginScreen>
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Premium Header with BlinKlean Branding
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(50),
-                  bottomRight: Radius.circular(20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
+            // Header with Animation
+            FadeInDown(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 32),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF009543), Color(0xFF00ADEF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(60),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.bolt_rounded, color: AppTheme.primaryColor, size: 32),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _status == AuthStatus.confirming ? "Verify Mobile" : (_isSignUp ? "Join BlinKlean" : "Welcome Back"),
+                      style: GoogleFonts.outfit(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -1,
+                      ),
+                    ),
+                    Text(
+                      _status == AuthStatus.confirming 
+                        ? "Enter the 6-digit code sent to you"
+                        : "Premium Quick-Clean Services at your doorstep.",
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 60),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: InkWell(
+                onTap: () => Navigator.pushNamed(context, '/provider-login'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
                     children: [
-                      // Logo and Company Name Row
-                      Row(
-                        children: [
-                          // Logo Container
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.bolt_rounded,
-                                size: 36,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
+                      const Icon(Icons.handyman_rounded, color: Colors.white70, size: 18),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "Are you a BlinKlean Partner?",
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(width: 16),
-                          // Company Name
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'BlinKlean',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              Text(
-                                'Premium Home Services',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 30),
-                      // Taglines
-                      Text(
-                        "India's 1st",
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: Colors.white60,
                         ),
                       ),
                       Text(
-                        'AI Powered QuickClean',
+                        "LOGIN HERE",
                         style: GoogleFonts.outfit(
-                          fontSize: 26,
+                          color: AppTheme.secondaryColor,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Premium Home Services & Scrap Recycling',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: Colors.white60,
+                          letterSpacing: 1.1,
                         ),
                       ),
                     ],
@@ -316,70 +218,188 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
             ),
+
+            const SizedBox(height: 10),
 
             // Form Area
             Padding(
-              padding: const EdgeInsets.all(28.0),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeaderTexts(),
-                      const SizedBox(height: 28),
-
-                      // Google Sign-In Button
-                      if (_authMode == AuthMode.emailSignIn ||
-                          _authMode == AuthMode.emailSignUp)
-                        _buildGoogleButton(),
-
-                      const SizedBox(height: 24),
-
-                      // Divider
-                      if (_authMode == AuthMode.emailSignIn ||
-                          _authMode == AuthMode.emailSignUp) ...[
-                        Row(
+              padding: const EdgeInsets.all(32.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    if (_status != AuthStatus.confirming) ...[
+                      if (_isSignUp) 
+                        FadeInUp(
+                          child: _buildTextField(
+                            controller: _nameController,
+                            label: "NAME",
+                            icon: Icons.person_outline_rounded,
+                            hint: "Your Full Name",
+                          ),
+                        ),
+                      const SizedBox(height: 20),
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 100),
+                        child: _buildTextField(
+                          controller: _phoneController,
+                          label: "PHONE NUMBER",
+                          icon: Icons.phone_android_rounded,
+                          hint: "9876543210",
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 200),
+                        child: _buildTextField(
+                          controller: _passwordController,
+                          label: "PASSWORD",
+                          icon: Icons.lock_outline_rounded,
+                          hint: "••••••••",
+                          isPassword: true,
+                        ),
+                      ),
+                    ] else 
+                      FadeInUp(
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: Divider(color: Colors.grey.shade300),
+                            Text(
+                              "We've sent an OTP to your phone",
+                              style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
+                            const SizedBox(height: 24),
+                            _buildTextField(
+                              controller: _otpController,
+                              label: "OTP CODE",
+                              icon: Icons.security_rounded,
+                              hint: "123456",
+                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: () => _auth.resendOTP(_phoneController.text),
                               child: Text(
-                                "OR",
+                                "Resend OTP",
                                 style: GoogleFonts.outfit(
-                                  fontSize: 12,
+                                  color: AppTheme.primaryColor,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 48),
+
+                    // Main Action Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 60,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          elevation: 10,
+                          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.35),
+                        ),
+                        onPressed: _status == AuthStatus.loading 
+                          ? null 
+                          : (_status == AuthStatus.confirming ? _verifyOTP : _handleAuth),
+                        child: _status == AuthStatus.loading
+                          ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                          : Text(
+                              _status == AuthStatus.confirming ? "Verify & Proceed" : (_isSignUp ? "Create Account" : "Sign In"),
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Switch Mode Toggle
+                    if (_status != AuthStatus.confirming)
+                      FadeIn(
+                        delay: const Duration(milliseconds: 500),
+                        child: TextButton(
+                          onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                          child: RichText(
+                            text: TextSpan(
+                              style: GoogleFonts.outfit(color: AppTheme.subtleColor, fontSize: 14),
+                              children: [
+                                TextSpan(text: _isSignUp ? "Already a member? " : "New to BlinKlean? "),
+                                TextSpan(
+                                  text: _isSignUp ? "Login" : "Join Now",
+                                  style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else 
+                      TextButton(
+                        onPressed: () => setState(() => _status = AuthStatus.idle),
+                        child: Text(
+                          "Change Phone Number",
+                          style: GoogleFonts.outfit(color: Colors.grey, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+
+                    const SizedBox(height: 32),
+                    FadeIn(
+                      delay: const Duration(milliseconds: 700),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.handshake_rounded, color: AppTheme.primaryColor),
+                            const SizedBox(width: 16),
                             Expanded(
-                              child: Divider(color: Colors.grey.shade300),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "SERVICE PARTNER?",
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.subtleColor,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => Navigator.pushNamed(context, '/provider-login'),
+                                    child: Text(
+                                      "Login to Partner Portal",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.textColor,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Input Fields
-                      ..._buildInputFields(),
-
-                      const SizedBox(height: 28),
-
-                      // Action Button
-                      _buildMainActionButton(),
-
-                      const SizedBox(height: 20),
-
-                      // Toggle Mode
-                      _buildModeToggleButtons(),
-                    ],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -389,269 +409,13 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildGoogleButton() {
-    return InkWell(
-      onTap: _isLoading ? null : _loginWithGoogle,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300, width: 1.5),
-          borderRadius: BorderRadius.circular(16),
-          color: Colors.white,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: Image.network(
-                'https://www.google.com/favicon.ico',
-                errorBuilder: (_, _, _) =>
-                    const Icon(Icons.g_mobiledata_rounded, color: Colors.red),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              "Continue with Google",
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderTexts() {
-    String title = "";
-    String subtitle = "";
-    switch (_authMode) {
-      case AuthMode.emailSignIn:
-        title = "Welcome Back";
-        subtitle = "Sign in to manage your bookings.";
-        break;
-      case AuthMode.emailSignUp:
-        title = "Create Account";
-        subtitle = "Join us for a cleaner tomorrow.";
-        break;
-      case AuthMode.phoneRequest:
-        title = "Verify Phone";
-        subtitle = "Enter your phone number.";
-        break;
-      case AuthMode.phoneVerify:
-        title = "Verify OTP";
-        subtitle = "Enter the code sent to your phone.";
-        break;
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.outfit(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.5,
-            color: AppTheme.textColor,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: GoogleFonts.outfit(color: AppTheme.subtleColor, fontSize: 15),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _buildInputFields() {
-    if (_authMode == AuthMode.emailSignUp) {
-      return [
-        _buildTextField(
-          _nameController,
-          'FULL NAME',
-          Icons.person_outline_rounded,
-        ),
-        const SizedBox(height: 14),
-        _buildTextField(
-          _phoneController,
-          'PHONE NUMBER',
-          Icons.phone_android_rounded,
-          keyboardType: TextInputType.phone,
-        ),
-        const SizedBox(height: 14),
-        _buildTextField(
-          _emailController,
-          'EMAIL ADDRESS',
-          Icons.email_outlined,
-          keyboardType: TextInputType.emailAddress,
-        ),
-        const SizedBox(height: 14),
-        _buildTextField(
-          _passwordController,
-          'PASSWORD',
-          Icons.lock_outline_rounded,
-          isPassword: true,
-        ),
-        const SizedBox(height: 14),
-        _buildTextField(
-          _addressController,
-          'ADDRESS',
-          Icons.location_on_outlined,
-          maxLines: 2,
-        ),
-      ];
-    } else if (_authMode == AuthMode.emailSignIn) {
-      return [
-        _buildTextField(
-          _emailController,
-          'EMAIL ADDRESS',
-          Icons.email_outlined,
-          keyboardType: TextInputType.emailAddress,
-        ),
-        const SizedBox(height: 14),
-        _buildTextField(
-          _passwordController,
-          'PASSWORD',
-          Icons.lock_outline_rounded,
-          isPassword: true,
-        ),
-      ];
-    } else if (_authMode == AuthMode.phoneRequest) {
-      return [
-        _buildTextField(
-          _phoneController,
-          'PHONE NUMBER',
-          Icons.phone_android_rounded,
-          keyboardType: TextInputType.phone,
-          hintText: "9876543210",
-        ),
-      ];
-    } else {
-      return [
-        _buildTextField(
-          _otpController,
-          'OTP CODE',
-          Icons.security_rounded,
-          keyboardType: TextInputType.number,
-          hintText: "123456",
-        ),
-      ];
-    }
-  }
-
-  Widget _buildMainActionButton() {
-    String label = "Sign In";
-    VoidCallback action = _submitEmailAuth;
-
-    if (_authMode == AuthMode.emailSignUp) {
-      label = "Create Account";
-    } else if (_authMode == AuthMode.phoneRequest) {
-      label = "Send OTP";
-      action = _requestPhoneOTP;
-    } else if (_authMode == AuthMode.phoneVerify) {
-      label = "Verify & Login";
-      action = _verifyPhoneOTP;
-    }
-
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 4,
-          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-        ),
-        onPressed: _isLoading ? null : action,
-        child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
-              )
-            : Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildModeToggleButtons() {
-    if (_authMode == AuthMode.phoneRequest ||
-        _authMode == AuthMode.phoneVerify) {
-      return Center(
-        child: TextButton(
-          onPressed: () => _switchMode(AuthMode.emailSignIn),
-          child: Text(
-            "← Back to Email Login",
-            style: GoogleFonts.outfit(
-              color: AppTheme.primaryColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      );
-    } else {
-      bool isSignUp = _authMode == AuthMode.emailSignUp;
-      return Center(
-        child: TextButton(
-          onPressed: () => _switchMode(
-            isSignUp ? AuthMode.emailSignIn : AuthMode.emailSignUp,
-          ),
-          child: RichText(
-            text: TextSpan(
-              style: GoogleFonts.outfit(
-                color: AppTheme.subtleColor,
-                fontSize: 15,
-              ),
-              children: [
-                TextSpan(
-                  text: isSignUp
-                      ? "Already have an account? "
-                      : "Don't have an account? ",
-                ),
-                TextSpan(
-                  text: isSignUp ? 'Sign In' : 'Sign Up',
-                  style: const TextStyle(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required String hint,
     bool isPassword = false,
     TextInputType? keyboardType,
-    int maxLines = 1,
-    String? hintText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,47 +423,38 @@ class _LoginScreenState extends State<LoginScreen>
         Text(
           label,
           style: GoogleFonts.outfit(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
             color: AppTheme.subtleColor,
+            letterSpacing: 2,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         TextFormField(
           controller: controller,
           obscureText: isPassword,
           keyboardType: keyboardType,
-          maxLines: maxLines,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 17),
           decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400),
+            hintText: hint,
+            hintStyle: GoogleFonts.outfit(color: Colors.grey[300]),
             prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 22),
             filled: true,
-            fillColor: Colors.grey.shade50,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 16,
-            ),
+            fillColor: Colors.grey[50],
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(color: Colors.grey[100]!, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: AppTheme.primaryColor,
-                width: 2,
-              ),
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(18),
               borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
             ),
           ),
-          validator: (v) =>
-              v == null || v.isEmpty ? 'This field is required' : null,
+          validator: (v) => v == null || v.isEmpty ? "Required" : null,
         ),
       ],
     );

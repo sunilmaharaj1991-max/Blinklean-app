@@ -1,15 +1,15 @@
 # BlinKlean - India's 1st AI Powered QuickClean Platform
 
 A complete Flutter mobile app for home services including:
-- **Home Cleaning** (1BHK, 2BHK, 3BHK, Kitchen, Bathroom, Sofa, Carpet, Office)
-- **Vehicle Care** (Car, Bike, Auto Rickshaw, Bicycle - waterless cleaning)
-- **Laundry Services** (Wash & Fold, Wash & Iron, Steam Iron, Dry Cleaning)
-- **Scrap & Recycling** (Paper, Plastic, Metal, E-Waste, Cardboard, Glass)
+-**Home Cleaning** (1BHK, 2BHK, 3BHK, Kitchen, Bathroom, Sofa, Carpet, Office)
+-**Vehicle Care** (Car, Bike, Auto Rickshaw, Bicycle - waterless cleaning)
+-**Laundry Services** (Wash & Fold, Wash & Iron, Steam Iron, Dry Cleaning)
+-**Scrap & Recycling** (Paper, Plastic, Metal, E-Waste, Cardboard, Glass)
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|------------|
+| ------- | ------------ |
 | Frontend | Flutter 3.x |
 | Auth | Firebase Auth (Gmail + Phone OTP) |
 | Database | MongoDB Atlas |
@@ -18,7 +18,7 @@ A complete Flutter mobile app for home services including:
 
 ## Project Structure
 
-```
+
 blinklean/
 ├── lib/                      # Flutter app
 │   ├── main.dart             # Entry point
@@ -32,11 +32,12 @@ blinklean/
     ├── models/              # MongoDB schemas
     ├── routes/              # API routes
     └── controllers/         # Business logic
-```
+
 
 ## Quick Setup
 
 ### 1. Backend
+
 ```bash
 cd backend
 npm install
@@ -46,6 +47,7 @@ npm start
 ```
 
 ### 2. Firebase
+
 1. Create project at [Firebase Console](https://console.firebase.google.com/)
 2. Add Android app with package: `com.blinklean.app`
 3. Download `google-services.json` to `android/app/`
@@ -53,6 +55,7 @@ npm start
 5. **Important:** Add SHA-1 fingerprint for Google Sign-In
 
 ### 3. Flutter App
+
 ```bash
 flutter pub get
 flutter run
@@ -63,6 +66,7 @@ flutter run
 If you get "Cannot read image.png" error:
 
 1. Get SHA-1:
+
 ```bash
 keytool -list -v -alias androiddebugkey -keystore %USERPROFILE%\.android\debug.keystore
 ```
@@ -83,11 +87,12 @@ keytool -list -v -alias androiddebugkey -keystore %USERPROFILE%\.android\debug.k
 ## API Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+| -------- | ---------- | ------------- |
 | POST | /api/auth/sync | Sync user |
 | GET | /api/services | Get services |
 | POST | /api/bookings | Create booking |
 | GET | /api/providers/bookings | Provider's bookings |
 
 ## License
+
 Private - All rights reserved

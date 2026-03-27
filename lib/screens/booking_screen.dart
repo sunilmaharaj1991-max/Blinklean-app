@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:amplify_flutter/amplify_flutter.dart';
 import '../models/service_model.dart';
 import '../services/payment_service.dart';
 import '../services/api_service.dart';
@@ -20,9 +20,7 @@ class _BookingScreenState extends State<BookingScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   final PaymentService _paymentService = PaymentService();
-  final fb_auth.FirebaseAuth _auth = fb_auth.FirebaseAuth.instance;
   final ApiService _api = apiService;
 
   DateTime? _selectedDate;
@@ -32,12 +30,26 @@ class _BookingScreenState extends State<BookingScreen> {
   void initState() {
     super.initState();
     _paymentService.initialize(_handleSuccess, _handleFailure, _handleWallet);
+    _loadAmplifyUser();
+  }
 
-    final user = _auth.currentUser;
-    if (user != null) {
-      _nameController.text = user.displayName ?? '';
-      _emailController.text = user.email ?? '';
-      _phoneController.text = user.phoneNumber ?? '';
+  Future<void> _loadAmplifyUser() async {
+    try {
+      final attributes = await Amplify.Auth.fetchUserAttributes();
+      String name = '';
+      String phone = '';
+
+      for (var attr in attributes) {
+        if (attr.userAttributeKey == AuthUserAttributeKey.name) name = attr.value;
+        if (attr.userAttributeKey == AuthUserAttributeKey.phoneNumber) phone = attr.value;
+      }
+
+      setState(() {
+        _nameController.text = name;
+        _phoneController.text = phone;
+      });
+    } catch (e) {
+      debugPrint('Error fetching Amplify user for booking: $e');
     }
   }
 
@@ -102,7 +114,6 @@ class _BookingScreenState extends State<BookingScreen> {
     _addressController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _paymentService.dispose();
     super.dispose();
   }
@@ -185,8 +196,6 @@ class _BookingScreenState extends State<BookingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isVehicle = widget.service.category == 'Vehicle Care';
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF9),
       appBar: AppBar(
@@ -305,12 +314,6 @@ class _BookingScreenState extends State<BookingScreen> {
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 16),
-            _buildInputField(
-              _emailController,
-              'Email Address',
-              Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-            ),
             const SizedBox(height: 16),
             _buildInputField(
               _addressController,
@@ -366,21 +369,35 @@ class _BookingScreenState extends State<BookingScreen> {
               decoration: BoxDecoration(
                 color: Colors.orange.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.orange.withAlpha(50)),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline_rounded, color: Colors.orange),
+                  const Icon(Icons.info_outline_rounded, color: Colors.orange, size: 20),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      isVehicle
-                          ? 'Reminder: No water or electricity required from your side.'
-                          : 'Reminder: Customer provides water/electricity.',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        color: Colors.orange.shade900,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "SERVICE REQUIREMENTS",
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.orange[800],
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.service.customerProvides,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: AppTheme.textColor,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

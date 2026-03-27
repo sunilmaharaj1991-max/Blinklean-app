@@ -1,46 +1,35 @@
-const admin = require('firebase-admin');
+const { CognitoJwtVerifier } = require('aws-jwt-verify');
 
-// Initialize Firebase Admin (call once in server.js)
-let firebaseInitialized = false;
+// Create verifier
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: process.env.COGNITO_USER_POOL_ID || 'eu-north-1_eWRyRplzS',
+  tokenUse: 'id',
+  clientId: process.env.COGNITO_CLIENT_ID || '6htgbni04qrm81seusp048nr1d',
+});
 
-const initFirebase = () => {
-  if (!firebaseInitialized && process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      firebaseInitialized = true;
-      console.log('✅ Firebase Admin Initialized');
-    } catch (error) {
-      console.error('❌ Firebase Admin Init Error:', error.message);
-    }
-  }
-};
-
-const verifyFirebaseToken = async (req, res, next) => {
+const verifyCognitoToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const idToken = authHeader.split('Bearer ')[1];
+    const token = authHeader.split('Bearer ')[1];
     
-    // Verify the Firebase token
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    // Verify the Cognito token
+    const payload = await verifier.verify(token);
     
     req.user = {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      phone: decodedToken.phone_number,
-      name: decodedToken.name,
-      picture: decodedToken.picture
+      uid: payload.sub,
+      email: payload.email,
+      phone: payload.phone_number,
+      name: payload.name || payload.nickname || payload['custom:name'],
+      picture: payload.picture
     };
     
     next();
   } catch (error) {
-    console.error('Token verification failed:', error.message);
+    console.error('Cognito token verification failed:', error.message);
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
@@ -49,12 +38,12 @@ const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      const idToken = authHeader.split('Bearer ')[1];
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const token = authHeader.split('Bearer ')[1];
+      const payload = await verifier.verify(token);
       req.user = {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        phone: decodedToken.phone_number
+        uid: payload.sub,
+        email: payload.email,
+        phone: payload.phone_number
       };
     }
   } catch (error) {
@@ -69,14 +58,12 @@ const requireRole = (...roles) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    // Role check would be done against the database
     next();
   };
 };
 
 module.exports = {
-  initFirebase,
-  verifyFirebaseToken,
+  verifyCognitoToken,
   optionalAuth,
   requireRole
 };

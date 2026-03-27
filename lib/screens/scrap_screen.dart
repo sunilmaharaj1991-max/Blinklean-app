@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/whatsapp_service.dart';
+import '../services/api_service.dart';
 import '../core/app_theme.dart';
 import '../utils/validators.dart';
 
@@ -30,13 +30,22 @@ class _ScrapScreenState extends State<ScrapScreen> {
     'Cardboard': 'Boxes, packaging material',
   };
 
+  final Map<String, String> _categoryBackgrounds = {
+    'Paper': 'https://images.unsplash.com/photo-1583521214690-7338ef470086?auto=format&fit=crop&q=80&w=800',
+    'Plastic': 'https://images.unsplash.com/photo-1620843343382-72352885976b?auto=format&fit=crop&q=80&w=800',
+    'Metal': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=800',
+    'Glass': 'https://images.unsplash.com/photo-1610444583731-971759547ea5?auto=format&fit=crop&q=80&w=800',
+    'E-Waste': 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&q=80&w=800',
+    'Cardboard': 'https://images.unsplash.com/photo-1512412086192-9115ed93cee8?auto=format&fit=crop&q=80&w=800',
+  };
+
   String? _selectedCategory;
   final TextEditingController _weightController = TextEditingController();
   final List<Map<String, dynamic>> _scrapItems = [];
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
-  final WhatsappService _whatsappService = WhatsappService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -74,7 +83,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
     return _scrapItems.fold(0, (sum, item) => sum + (item['weight'] as double));
   }
 
-  void _contactOnWhatsApp() async {
+  void _submitScrapPickup() async {
     if (_addressController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your address')),
@@ -82,9 +91,9 @@ class _ScrapScreenState extends State<ScrapScreen> {
       return;
     }
     if (_nameController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter your name')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your name')),
+      );
       return;
     }
     if (_phoneController.text.isEmpty) {
@@ -100,27 +109,27 @@ class _ScrapScreenState extends State<ScrapScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     try {
-      String message = '🏠 *Scrap Pickup Request*\n\n';
-      message += '👤 Name: ${_nameController.text}\n';
-      message += '📱 Phone: ${_phoneController.text}\n';
-      message += '📍 Address: ${_addressController.text}\n\n';
-      message += '♻️ *Scrap Items:*\n';
+      final pickupData = {
+        'name': _nameController.text,
+        'phone': _phoneController.text,
+        'address': _addressController.text,
+        'items': _scrapItems,
+        'totalWeight': _totalWeight,
+        'status': 'pending',
+        'createdAt': DateTime.now().toIso8601String(),
+      };
 
-      for (var item in _scrapItems) {
-        message += '• ${item['category']} - ${item['weight']} kg\n';
-      }
-      message += '\n📦 Total Weight: ${_totalWeight.toStringAsFixed(1)} kg\n';
-      message += '\n💰 Price will be informed on pickup';
-
-      await _whatsappService.sendMessage(message);
+      // Assuming we have ApiService imported or accessible via locator
+      // Wait, ApiService isn't imported yet, I'll add the import at the top
+      await apiService.createScrapPickup(pickupData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'WhatsApp opened! Send the message to confirm pickup.',
-            ),
+            content: Text('Scrap pickup requested successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -130,11 +139,13 @@ class _ScrapScreenState extends State<ScrapScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to open WhatsApp: $e'),
+            content: Text('Failed to book pickup: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -175,6 +186,8 @@ class _ScrapScreenState extends State<ScrapScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
+            const SizedBox(height: 24),
+            _buildHowToBookGuide(),
             const SizedBox(height: 32),
             _buildCategorySection(),
             const SizedBox(height: 32),
@@ -186,7 +199,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
             ],
             _buildContactForm(),
             const SizedBox(height: 24),
-            if (_scrapItems.isNotEmpty) _buildWhatsAppButton(),
+            if (_scrapItems.isNotEmpty) _buildSubmitButton(),
             const SizedBox(height: 100),
           ],
         ),
@@ -195,45 +208,97 @@ class _ScrapScreenState extends State<ScrapScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
+    final String background = _selectedCategory != null 
+        ? _categoryBackgrounds[_selectedCategory] ?? 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=800'
+        : 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=800';
+
+    return Stack(
+      children: [
+        Container(
+          height: 180,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            image: DecorationImage(
+              image: NetworkImage(background),
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        children: [
-          Row(
+        Container(
+          height: 180,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.1),
+                Colors.black.withValues(alpha: 0.6),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(24),
+          height: 180,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text('♻️', style: TextStyle(fontSize: 28)),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedCategory != null ? 'Sell $_selectedCategory' : 'Sell Your Scrap',
+                          style: GoogleFonts.outfit(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Expert AI-Powered Recycling',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text('♻️', style: TextStyle(fontSize: 36)),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      'Sell Your Scrap',
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Get instant pickup & fair market price!',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.9),
+                    const Icon(Icons.info_outline_rounded, color: Colors.white, size: 16),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Market prices are adjusted dynamically upon pickup',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ],
@@ -241,30 +306,53 @@ class _ScrapScreenState extends State<ScrapScreen> {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHowToBookGuide() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'How to Book Scrap Pickup?',
+            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
+          _buildGuideStep(1, 'Select & Add', 'Select scrap material and estimate weight, then hit (+).'),
+          _buildGuideStep(2, 'Your Details', 'Provide your address and contact info for our expert.'),
+          _buildGuideStep(3, 'Confirm Book', 'Tap "Book Pickup" and relax, we take it from here!'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideStep(int step, String title, String desc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: AppTheme.primaryColor,
+            child: Text('$step', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Price will be informed on pickup based on current market rates',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.95),
-                    ),
-                  ),
-                ),
+                Text(title, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(desc, style: GoogleFonts.outfit(fontSize: 11, color: AppTheme.subtleColor)),
               ],
             ),
           ),
@@ -648,25 +736,30 @@ class _ScrapScreenState extends State<ScrapScreen> {
     );
   }
 
-  Widget _buildWhatsAppButton() {
+  Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
       height: 60,
-      child: ElevatedButton.icon(
-        onPressed: _contactOnWhatsApp,
-        icon: const Icon(Icons.message_rounded, size: 24),
-        label: Text(
-          'Book Pickup on WhatsApp',
-          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submitScrapPickup,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF25D366),
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           elevation: 4,
         ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              )
+            : Text(
+                'Book Pickup Now',
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
