@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Razorpay = require('razorpay');
-const { Booking, User } = require('../models');
+const { ddbDocClient } = require('../config/db');
+const { UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+
+const BOOKINGS_TABLE = process.env.DYNAMODB_BOOKINGS_TABLE || 'BlinkleanBookings';
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -51,14 +54,20 @@ router.post('/verify', async (req, res) => {
 
     if (generatedSignature === razorpay_signature) {
       // Update booking payment status
-      await Booking.findOneAndUpdate(
-        { bookingId },
-        {
-          'payment.status': 'paid',
-          'payment.transactionId': razorpay_payment_id,
-          'payment.paidAt': new Date()
+      await ddbDocClient.send(new UpdateCommand({
+        TableName: BOOKINGS_TABLE,
+        Key: { bookingId },
+        UpdateExpression: 'set #p.#s = :s, #p.transactionId = :t, #p.paidAt = :d',
+        ExpressionAttributeNames: {
+          '#p': 'payment',
+          '#s': 'status'
+        },
+        ExpressionAttributeValues: {
+          ':s': 'paid',
+          ':t': razorpay_payment_id,
+          ':d': new Date().toISOString()
         }
-      );
+      }));
 
       res.json({ success: true, message: 'Payment verified' });
     } else {

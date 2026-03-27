@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyFirebaseToken } = require('../middleware/auth');
+const { verifyCognitoToken } = require('../middleware/auth');
 const { getAllServices, getServiceById, getServicesByCategory, getCategories } = require('../controllers/serviceController');
 
 // Public routes

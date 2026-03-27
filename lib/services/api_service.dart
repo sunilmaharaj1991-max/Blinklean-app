@@ -7,6 +7,7 @@ import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 
 class ApiService {
   static const String baseUrl = 'https://blinklean-api.onrender.com/api';
+  static const String awsScrapApiUrl = 'https://3090drir79.execute-api.ap-south-1.amazonaws.com/prod/scrap-pickup';
 
   String? _idToken;
 
@@ -148,8 +149,35 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> createScrapPickup(Map<String, dynamic> pickupData) async {
-    await _storeInAWS('scrap', pickupData);
-    return {'success': true, 'id': 'AWS_SCRAP_${DateTime.now().millisecondsSinceEpoch}'};
+    try {
+      // First, attempt to store via the modern AWS API endpoint
+      final response = await http.post(
+        Uri.parse(awsScrapApiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(pickupData),
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('Successfully created scrap pickup via AWS API Gateway');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+
+      // Fallback to direct S3 storage if API fails
+      debugPrint('AWS API failed (status ${response.statusCode}), falling back to direct S3 storage');
+      await _storeInAWS('scrap', pickupData);
+      return {'success': true, 'id': 'AWS_SCRAP_BACKUP_${DateTime.now().millisecondsSinceEpoch}'};
+    } catch (e) {
+      debugPrint('AWS API Error: $e, falling back to direct S3 storage');
+      try {
+        await _storeInAWS('scrap', pickupData);
+        return {'success': true, 'id': 'AWS_SCRAP_BACKUP_${DateTime.now().millisecondsSinceEpoch}'};
+      } catch (innerError) {
+        throw ApiException('Failed to create scrap pickup: $e');
+      }
+    }
   }
 
   Future<bool> checkServiceAvailability(String pincode) async {

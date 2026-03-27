@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
@@ -17,16 +18,48 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ScrollController _popularScrollController = ScrollController();
+  Timer? _scrollTimer;
+
+  void _startAutoScroll() {
+    _scrollTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (_popularScrollController.hasClients) {
+        if (_scrollTimer == null || !_scrollTimer!.isActive) return;
+        
+        final maxScroll = _popularScrollController.position.maxScrollExtent;
+        final currentScroll = _popularScrollController.position.pixels;
+        // Item width is 180 + 14 margin
+        final scrollAmount = 194.0;
+
+        if (currentScroll + scrollAmount >= maxScroll + 10) {
+          _popularScrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeInOutExpo,
+          );
+        } else {
+          _popularScrollController.animateTo(
+            currentScroll + scrollAmount,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _startAutoScroll();
   }
 
   @override
   void dispose() {
+    _scrollTimer?.cancel();
     _tabController.dispose();
+    _popularScrollController.dispose();
     super.dispose();
   }
 
@@ -318,6 +351,7 @@ class _HomeScreenState extends State<HomeScreen>
           SizedBox(
             height: 240,
             child: ListView.builder(
+              controller: _popularScrollController,
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 18),
               itemCount: popularServices.length,

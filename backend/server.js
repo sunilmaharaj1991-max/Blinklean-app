@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
+const { ddbDocClient } = require('./config/db');
+
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -15,43 +16,11 @@ const paymentRoutes = require('./routes/payments');
 
 const app = express();
 
-// Security Middleware
-// Security Middleware
 app.use(helmet());
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:3000',
-  'http://localhost:64050', // Flutter Web default
-].filter(Boolean);
+app.use(cors()); // Simplified for now
+app.use(express.json());
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
-      return callback(null, true);
-    }
-    return callback(null, true); // Fallback to true for easier development, but safer than '*' with credentials
-  },
-  credentials: true
-}));
-
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  message: { error: 'Too many requests, please try again later.' }
-});
-app.use('/api/', limiter);
-
-// Body Parser
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+console.log('✅ AWS DynamoDB Client Initialized');
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -59,8 +28,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/scrap', scrapRoutes);
+app.use('/api/scrap-pickup', scrapRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/payments', paymentRoutes);
+
+// Direct top-level routes for specific modernization patterns
+app.use('/scrap-pickup', scrapRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {

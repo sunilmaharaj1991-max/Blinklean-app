@@ -1,17 +1,35 @@
-const { Service } = require('../models');
+const { ddbDocClient } = require('../config/db');
+const { 
+  GetCommand, 
+  PutCommand, 
+  UpdateCommand, 
+  ScanCommand,
+  QueryCommand 
+} = require('@aws-sdk/lib-dynamodb');
+
+const SERVICES_TABLE = process.env.DYNAMODB_SERVICES_TABLE || 'BlinkleanServices';
 
 const getAllServices = async (req, res) => {
   try {
     const { category } = req.query;
-    const filter = { isActive: true };
+    
+    const params = {
+      TableName: SERVICES_TABLE,
+      FilterExpression: 'isActive = :a',
+      ExpressionAttributeValues: { ':a': true }
+    };
     
     if (category) {
-      filter.category = category;
+      params.FilterExpression += ' AND category = :c';
+      params.ExpressionAttributeValues[':c'] = category;
     }
 
-    const services = await Service.find(filter).sort({ order: 1, createdAt: 1 });
+    const { Items: services } = await ddbDocClient.send(new ScanCommand(params));
     
-    res.json({ services });
+    // Sort manually by order
+    const sortedServices = (services || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    res.json({ services: sortedServices });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -20,9 +38,13 @@ const getAllServices = async (req, res) => {
 const getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
-    const service = await Service.findOne({ id, isActive: true });
     
-    if (!service) {
+    const { Item: service } = await ddbDocClient.send(new GetCommand({
+      TableName: SERVICES_TABLE,
+      Key: { id }
+    }));
+    
+    if (!service || !service.isActive) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
@@ -35,9 +57,16 @@ const getServiceById = async (req, res) => {
 const getServicesByCategory = async (req, res) => {
   try {
     const { category } = req.params;
-    const services = await Service.find({ category, isActive: true }).sort({ order: 1 });
     
-    res.json({ services });
+    const { Items: services } = await ddbDocClient.send(new ScanCommand({
+      TableName: SERVICES_TABLE,
+      FilterExpression: 'category = :c AND isActive = :a',
+      ExpressionAttributeValues: { ':c': category, ':a': true }
+    }));
+    
+    const sortedServices = (services || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    res.json({ services: sortedServices });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -45,41 +74,33 @@ const getServicesByCategory = async (req, res) => {
 
 const getCategories = async (req, res) => {
   try {
-    const categories = await Service.distinct('category', { isActive: true });
+    const { Items: allServices } = await ddbDocClient.send(new ScanCommand({
+      TableName: SERVICES_TABLE,
+      ProjectionExpression: 'category',
+      FilterExpression: 'isActive = :a',
+      ExpressionAttributeValues: { ':a': true }
+    }));
+    
+    const categories = [...new Set((allServices || []).map(s => s.category))];
     res.json({ categories });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Admin: Create/Update services
 const createService = async (req, res) => {
   try {
     const serviceData = req.body;
-    const service = new Service(serviceData);
-    await service.save();
-    res.status(201).json({ success: true, service });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const updateService = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
     
-    const service = await Service.findOneAndUpdate(
-      { id },
-      updates,
-      { new: true }
-    );
-
-    if (!service) {
-      return res.status(404).json({ error: 'Service not found' });
-    }
-
-    res.json({ success: true, service });
+    await ddbDocClient.send(new PutCommand({
+      TableName: SERVICES_TABLE,
+      Item: {
+        ...serviceData,
+        createdAt: new Date().toISOString()
+      }
+    }));
+    
+    res.status(201).json({ success: true, service: serviceData });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -90,6 +111,5 @@ module.exports = {
   getServiceById,
   getServicesByCategory,
   getCategories,
-  createService,
-  updateService
+  createService
 };

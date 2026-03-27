@@ -8,6 +8,7 @@
     "test": "test"
   },
   "scripts": {
+    "dev": "cd backend && npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -23,6 +24,5 @@
   "homepage": "https://github.com/sunilmaharaj1991-max/Blinklean-app#readme",
   "type": "module",
   "dependencies": {
-    "mongodb": "^7.1.1"
   }
 }

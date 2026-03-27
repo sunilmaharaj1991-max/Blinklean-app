@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyFirebaseToken, optionalAuth } = require('../middleware/auth');
+const { verifyCognitoToken, optionalAuth } = require('../middleware/auth');
 const { 
   createScrapPickup, 
   getUserScrapPickups, 
@@ -9,9 +9,9 @@ const {
 } = require('../controllers/scrapController');
 
 // User routes
-router.post('/', verifyFirebaseToken, createScrapPickup);
-router.get('/my', verifyFirebaseToken, getUserScrapPickups);
+router.post('/', optionalAuth, createScrapPickup); // Matches both /api/scrap and /scrap-pickup
+router.get('/my', verifyCognitoToken, getUserScrapPickups);
 router.get('/:pickupId', optionalAuth, getScrapPickupById);
-router.put('/:pickupId/cancel', verifyFirebaseToken, cancelScrapPickup);
+router.put('/:pickupId/cancel', verifyCognitoToken, cancelScrapPickup);
 
 module.exports = router;

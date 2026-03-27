@@ -1,9 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../services/auth_service.dart';
 import '../core/app_theme.dart';
+import 'main_navigation_screen.dart';
+import 'provider/partner_navigation_screen.dart';
+import 'admin/admin_navigation_screen.dart';
 
 enum AuthStatus { idle, loading, confirming }
 
@@ -399,6 +403,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 40),
+                      Text(
+                        "DEBUG BYPASS (DEVELOPER ONLY)",
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.redAccent,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildDebugButton(context, "CUSTOMER", () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainNavigationScreen()))),
+                          _buildDebugButton(context, "PARTNER", () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PartnerNavigationScreen()))),
+                          _buildDebugButton(context, "ADMIN", () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminNavigationScreen()))),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -406,6 +431,20 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDebugButton(BuildContext context, String label, VoidCallback onPressed) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey[100],
+        foregroundColor: Colors.black,
+        elevation: 0,
+        textStyle: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      onPressed: onPressed,
+      child: Text(label),
     );
   }
 

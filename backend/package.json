@@ -9,6 +9,8 @@
     "seed": "node scripts/seed.js"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1018.0",
+    "@aws-sdk/lib-dynamodb": "^3.1018.0",
     "aws-jwt-verify": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -17,12 +19,10 @@
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.0",
     "razorpay": "^2.9.2",
     "validator": "^13.11.0"
   },
   "devDependencies": {
-    "mongoose": "^9.3.2",
     "nodemon": "^3.0.2",
     "seed": "^0.4.4"
   },

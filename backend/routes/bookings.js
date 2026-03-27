@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyFirebaseToken, optionalAuth } = require('../middleware/auth');
+const { verifyCognitoToken, optionalAuth } = require('../middleware/auth');
 const { 
   createBooking, 
   getUserBookings, 
@@ -10,10 +10,10 @@ const {
 } = require('../controllers/bookingController');
 
 // User routes
-router.post('/', verifyFirebaseToken, createBooking);
-router.get('/', verifyFirebaseToken, getUserBookings);
+router.post('/', verifyCognitoToken, createBooking);
+router.get('/', verifyCognitoToken, getUserBookings);
 router.get('/:bookingId', optionalAuth, getBookingById);
-router.put('/:bookingId/cancel', verifyFirebaseToken, cancelBooking);
-router.put('/:bookingId/rate', verifyFirebaseToken, rateBooking);
+router.put('/:bookingId/cancel', verifyCognitoToken, cancelBooking);
+router.put('/:bookingId/rate', verifyCognitoToken, rateBooking);
 
 module.exports = router;

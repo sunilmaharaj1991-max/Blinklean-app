@@ -1,28 +1,45 @@
-const { Provider, User, Booking, ScrapPickup } = require('../models');
+const { ddbDocClient } = require('../config/db');
+const { 
+  GetCommand, 
+  PutCommand, 
+  UpdateCommand, 
+  ScanCommand,
+  QueryCommand 
+} = require('@aws-sdk/lib-dynamodb');
 
-// Get provider profile
+const PROVIDERS_TABLE = process.env.DYNAMODB_PROVIDERS_TABLE || 'BlinkleanProviders';
+const BOOKINGS_TABLE = process.env.DYNAMODB_BOOKINGS_TABLE || 'BlinkleanBookings';
+const SCRAP_TABLE = process.env.DYNAMODB_SCRAP_TABLE || 'BlinkleanScrapPickups';
+
 const getProviderProfile = async (req, res) => {
   try {
-    const provider = await Provider.findOne({ userId: req.user?.uid })
-      .populate('userId', 'name phone email address');
+    const uid = req.user?.uid;
     
-    if (!provider) {
+    // Find provider by userId (using Scan if no GSI)
+    const { Items: providers } = await ddbDocClient.send(new ScanCommand({
+      TableName: PROVIDERS_TABLE,
+      FilterExpression: 'userId = :uid',
+      ExpressionAttributeValues: { ':uid': uid }
+    }));
+    
+    if (!providers || providers.length === 0) {
       return res.status(404).json({ error: 'Provider profile not found' });
     }
 
-    res.json({ provider });
+    res.json({ provider: providers[0] });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get provider by ID
 const getProviderById = async (req, res) => {
   try {
     const { providerId } = req.params;
     
-    const provider = await Provider.findOne({ providerId })
-      .select('-ratings');
+    const { Item: provider } = await ddbDocClient.send(new GetCommand({
+      TableName: PROVIDERS_TABLE,
+      Key: { providerId }
+    }));
 
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
@@ -34,20 +51,33 @@ const getProviderById = async (req, res) => {
   }
 };
 
-// Update provider status (online/offline)
 const updateProviderStatus = async (req, res) => {
   try {
     const { status } = req.body;
+    const uid = req.user?.uid;
     
-    const provider = await Provider.findOneAndUpdate(
-      { userId: req.user?.uid },
-      { status, lastActive: new Date() },
-      { new: true }
-    );
+    // First get the providerId
+    const { Items: providers } = await ddbDocClient.send(new ScanCommand({
+      TableName: PROVIDERS_TABLE,
+      FilterExpression: 'userId = :uid',
+      ExpressionAttributeValues: { ':uid': uid }
+    }));
 
-    if (!provider) {
-      return res.status(404).json({ error: 'Provider not found' });
+    if (!providers || providers.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
     }
+
+    const { Attributes: provider } = await ddbDocClient.send(new UpdateCommand({
+      TableName: PROVIDERS_TABLE,
+      Key: { providerId: providers[0].providerId },
+      UpdateExpression: 'set #s = :s, lastActive = :l',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':s': status,
+        ':l': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    }));
 
     res.json({ success: true, provider });
   } catch (error) {
@@ -55,149 +85,43 @@ const updateProviderStatus = async (req, res) => {
   }
 };
 
-// Get provider's bookings (services + scrap combined)
 const getProviderBookings = async (req, res) => {
   try {
-    const { status, type, page = 1, limit = 20 } = req.query;
+    const uid = req.user?.uid;
     
-    const provider = await Provider.findOne({ userId: req.user?.uid });
-    if (!provider) {
-      return res.status(404).json({ error: 'Provider not found' });
+    const { Items: providers } = await ddbDocClient.send(new ScanCommand({
+      TableName: PROVIDERS_TABLE,
+      FilterExpression: 'userId = :uid',
+      ExpressionAttributeValues: { ':uid': uid }
+    }));
+
+    if (!providers || providers.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
     }
 
-    const filter = { providerId: provider._id };
-    if (status) {
-      filter.status = status;
-    }
+    const providerId = providers[0].providerId;
 
     // Get service bookings
-    const serviceBookings = await Booking.find(filter)
-      .populate('userId', 'name phone address')
-      .select('-statusHistory -notes.internal');
+    const { Items: serviceBookings } = await ddbDocClient.send(new ScanCommand({
+      TableName: BOOKINGS_TABLE,
+      FilterExpression: 'providerId = :p',
+      ExpressionAttributeValues: { ':p': providerId }
+    }));
 
     // Get scrap pickups
-    const scrapPickups = await ScrapPickup.find({ providerId: provider._id })
-      .populate('userId', 'name phone address')
-      .select('-notes.provider');
+    const { Items: scrapPickups } = await ddbDocClient.send(new ScanCommand({
+      TableName: SCRAP_TABLE,
+      FilterExpression: 'providerId = :p',
+      ExpressionAttributeValues: { ':p': providerId }
+    }));
 
     // Combine and format
-    const combinedBookings = [
-      ...serviceBookings.map(b => ({
-        _id: b._id,
-        type: 'service',
-        bookingId: b.bookingId,
-        customerName: b.userId?.name,
-        customerPhone: b.userId?.phone,
-        address: b.address,
-        serviceName: b.service?.name,
-        serviceCategory: b.service?.category,
-        schedule: b.schedule,
-        status: b.status,
-        price: b.pricing?.totalPrice,
-        paymentStatus: b.payment?.status,
-        createdAt: b.createdAt
-      })),
-      ...scrapPickups.map(p => ({
-        _id: p._id,
-        type: 'scrap',
-        bookingId: p.pickupId,
-        customerName: p.userId?.name,
-        customerPhone: p.userId?.phone,
-        address: p.address,
-        serviceName: 'Scrap Pickup',
-        serviceCategory: 'Scrap & Recycling',
-        schedule: p.schedule,
-        status: p.status,
-        price: p.pricing?.totalPrice,
-        paymentStatus: p.payment?.status,
-        items: p.items,
-        createdAt: p.createdAt
-      }))
-    ];
+    const combined = [
+      ...(serviceBookings || []).map(b => ({ ...b, type: 'service' })),
+      ...(scrapPickups || []).map(p => ({ ...p, type: 'scrap' }))
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // Sort by date (newest first)
-    combinedBookings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    // Filter by type if specified
-    const filtered = type ? combinedBookings.filter(b => b.type === type) : combinedBookings;
-
-    res.json({
-      bookings: filtered,
-      stats: {
-        total: combinedBookings.length,
-        upcoming: combinedBookings.filter(b => ['confirmed', 'assigned'].includes(b.status)).length,
-        completed: combinedBookings.filter(b => b.status === 'completed').length,
-        earnings: provider.stats.totalEarnings
-      }
-    });
-  } catch (error) {
-    console.error('Get provider bookings error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Accept/assign booking to provider
-const assignBookingToProvider = async (req, res) => {
-  try {
-    const { bookingId, type } = req.body;
-    
-    const provider = await Provider.findOne({ userId: req.user?.uid });
-    if (!provider) {
-      return res.status(404).json({ error: 'Provider not found' });
-    }
-
-    if (type === 'scrap') {
-      const pickup = await ScrapPickup.findOneAndUpdate(
-        { pickupId: bookingId },
-        { providerId: provider._id, status: 'assigned' },
-        { new: true }
-      );
-      return res.json({ success: true, pickup });
-    } else {
-      const booking = await Booking.findOneAndUpdate(
-        { bookingId },
-        { providerId: provider._id, status: 'assigned' },
-        { new: true }
-      );
-      return res.json({ success: true, booking });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Update booking status
-const updateBookingStatus = async (req, res) => {
-  try {
-    const { bookingId, type, status, notes } = req.body;
-    
-    let record;
-    if (type === 'scrap') {
-      record = await ScrapPickup.findOneAndUpdate(
-        { pickupId: bookingId },
-        { status, 'notes.provider': notes },
-        { new: true }
-      );
-    } else {
-      record = await Booking.findOneAndUpdate(
-        { bookingId },
-        { status, 'notes.provider': notes },
-        { new: true }
-      );
-      
-      // Update provider stats
-      if (status === 'completed') {
-        const provider = await Provider.findById(record.providerId);
-        if (provider) {
-          provider.stats.completedJobs += 1;
-          provider.stats.totalEarnings += record.pricing.totalPrice;
-          provider.stats.thisMonthEarnings += record.pricing.totalPrice;
-          await provider.save();
-        }
-      }
-    }
-
-    res.json({ success: true, record });
+    res.json({ bookings: combined });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -207,7 +131,5 @@ module.exports = {
   getProviderProfile,
   getProviderById,
   updateProviderStatus,
-  getProviderBookings,
-  assignBookingToProvider,
-  updateBookingStatus
+  getProviderBookings
 };

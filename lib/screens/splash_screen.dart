@@ -34,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (mounted) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, anim, __) => FadeTransition(opacity: anim, child: const MainEntry()),
+          pageBuilder: (_, anim, _) => FadeTransition(opacity: anim, child: const MainEntry()),
           transitionDuration: const Duration(milliseconds: 800),
         ),
       );
@@ -108,7 +108,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     tag: 'logo',
                     child: Image.asset(
                       'assets/images/logo_icon.png',
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.auto_awesome_rounded,
                         size: 60,
                         color: AppTheme.primaryColor,

@@ -1,7 +1,26 @@
+import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'api_service.dart';
 
+enum UserRole { customer, partner, admin }
+
 class AuthService {
+  Future<UserRole> getUserRole() async {
+    try {
+      final attributes = await Amplify.Auth.fetchUserAttributes();
+      for (final attribute in attributes) {
+        if (attribute.userAttributeKey.toString() == 'custom:role') {
+          if (attribute.value == 'admin') return UserRole.admin;
+          if (attribute.value == 'partner' || attribute.value == 'provider') return UserRole.partner;
+        }
+      }
+      return UserRole.customer; // Default
+    } catch (e) {
+      debugPrint('Error fetching role: $e');
+      return UserRole.customer;
+    }
+  }
+
   Future<AuthUser?> get currentUser async {
     try {
       return await Amplify.Auth.getCurrentUser();

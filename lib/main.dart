@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_authenticator/amplify_authenticator.dart';
-import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 
 import 'amplifyconfiguration.dart';
@@ -12,10 +12,31 @@ import 'screens/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/admin/admin_provider_onboarding_screen.dart';
 import 'screens/provider/provider_login_screen.dart';
+import 'screens/provider/partner_navigation_screen.dart';
+import 'screens/admin/admin_navigation_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _configureAmplify();
   runApp(const BlinKleanApp());
+}
+
+Future<void> _configureAmplify() async {
+  try {
+    if (!Amplify.isConfigured) {
+      await Amplify.addPlugins([
+        AmplifyAuthCognito(),
+        AmplifyStorageS3(),
+      ]);
+      await Amplify.configure(amplifyconfig);
+    }
+    debugPrint('BlinkLean AWS: Successfully configured');
+  } on AmplifyAlreadyConfiguredException {
+    debugPrint('BlinkLean AWS: Already configured');
+  } catch (e) {
+    debugPrint('BlinkLean AWS Error: $e');
+  }
 }
 
 class BlinKleanApp extends StatefulWidget {
@@ -26,31 +47,6 @@ class BlinKleanApp extends StatefulWidget {
 }
 
 class _BlinKleanAppState extends State<BlinKleanApp> {
-  @override
-  void initState() {
-    super.initState();
-    _configureAmplify();
-  }
-
-  Future<void> _configureAmplify() async {
-    try {
-      if (!Amplify.isConfigured) {
-        // Initialize API and add to plugins
-        await Amplify.addPlugins([
-          AmplifyAuthCognito(),
-          AmplifyAPI(),
-          AmplifyStorageS3(),
-        ]);
-        await Amplify.configure(amplifyconfig);
-      }
-      debugPrint('BlinkLean AWS: Successfully configured');
-    } on AmplifyAlreadyConfiguredException {
-      debugPrint('BlinkLean AWS: Already configured');
-    } catch (e) {
-      debugPrint('BlinkLean AWS Error: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -69,21 +65,25 @@ class _BlinKleanAppState extends State<BlinKleanApp> {
   }
 }
 
-class MainEntry extends StatelessWidget {
+class MainEntry extends StatefulWidget {
   const MainEntry({super.key});
+
+  @override
+  State<MainEntry> createState() => _MainEntryState();
+}
+
+class _MainEntryState extends State<MainEntry> {
+  final AuthService _auth = AuthService();
 
   @override
   Widget build(BuildContext context) {
     return Authenticator(
-       // Use custom forms for Phone Auth
       signUpForm: SignUpForm.custom(
         fields: [
           SignUpFormField.name(required: true),
           SignUpFormField.phoneNumber(required: true),
         ],
       ),
-      
-      // Use our premium custom LoginScreen
       authenticatorBuilder: (context, state) {
         switch (state.currentStep) {
           case AuthenticatorStep.signIn:
@@ -91,11 +91,29 @@ class MainEntry extends StatelessWidget {
           case AuthenticatorStep.confirmSignUp:
             return const LoginScreen();
           default:
-            return null; // Let default handle others if needed
+            return null;
         }
       },
-      
-      child: const MainNavigationScreen(),
+      child: FutureBuilder<UserRole>(
+        future: _auth.getUserRole(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final role = snapshot.data ?? UserRole.customer;
+          
+          switch (role) {
+            case UserRole.admin:
+              return const AdminNavigationScreen();
+            case UserRole.partner:
+              return const PartnerNavigationScreen();
+            case UserRole.customer:
+              return const MainNavigationScreen();
+          }
+        },
+      ),
     );
   }
 }
