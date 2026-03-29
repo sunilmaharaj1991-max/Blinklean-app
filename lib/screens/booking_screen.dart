@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/service_model.dart';
 import '../services/payment_service.dart';
 import '../services/api_service.dart';
@@ -261,7 +262,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       color: Colors.white,
                       size: 32,
                     ),
-                  ),
+                  ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
                   const SizedBox(width: 20),
                   Expanded(
                     child: Column(
@@ -274,7 +275,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
+                        ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.2),
                         const SizedBox(height: 4),
                         Text(
                           'Order Amount',
@@ -290,29 +291,29 @@ class _BookingScreenState extends State<BookingScreen> {
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                           ),
-                        ),
+                        ).animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.8, 0.8)),
                       ],
                     ),
                   ),
                 ],
               ),
-            ),
+            ).animate().fadeIn().slideY(begin: 0.2),
 
             const SizedBox(height: 40),
-            _buildSectionHeader('Personal Details'),
+            _buildSectionHeader('Personal Details').animate().fadeIn(delay: 300.ms),
             const SizedBox(height: 20),
             _buildInputField(
               _nameController,
               'Full Name',
               Icons.person_outline_rounded,
-            ),
+            ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
             const SizedBox(height: 16),
             _buildInputField(
               _phoneController,
               'Phone Number',
               Icons.phone_android_rounded,
               keyboardType: TextInputType.phone,
-            ),
+            ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
             const SizedBox(height: 16),
             const SizedBox(height: 16),
             _buildInputField(

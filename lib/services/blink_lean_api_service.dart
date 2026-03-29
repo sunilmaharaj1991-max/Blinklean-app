@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 
 class BlinkLeanApiService {
   // Replace with your actual API Gateway base URL from Amplify console
-  static const String _baseUrl = 'https://YOUR_API_ID.execute-api.eu-north-1.amazonaws.com/prod';
+  static const String _baseUrl = 'https://3090drir79.execute-api.ap-south-1.amazonaws.com/prod';
 
   /// helper to get the Cognito Access Token
   Future<String?> _getAuthToken() async {

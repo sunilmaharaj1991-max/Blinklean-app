@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../services/api_service.dart';
 import '../core/app_theme.dart';
 import '../utils/validators.dart';
@@ -45,10 +47,45 @@ class _ScrapScreenState extends State<ScrapScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+  final ScrollController _categoryScrollController = ScrollController();
+  Timer? _scrollTimer;
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _startAutoScroll();
+  }
+
+  void _startAutoScroll() {
+    _scrollTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_categoryScrollController.hasClients) {
+        final maxScroll = _categoryScrollController.position.maxScrollExtent;
+        final currentScroll = _categoryScrollController.position.pixels;
+        // Move by 130 + 12 margin
+        final scrollAmount = 142.0;
+
+        if (currentScroll + scrollAmount >= maxScroll + 10) {
+          _categoryScrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 1200),
+            curve: Curves.easeInOutExpo,
+          );
+        } else {
+          _categoryScrollController.animateTo(
+            currentScroll + scrollAmount,
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _scrollTimer?.cancel();
+    _categoryScrollController.dispose();
     _weightController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
@@ -185,21 +222,21 @@ class _ScrapScreenState extends State<ScrapScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            _buildHeader().animate().fadeIn().slideY(begin: -0.2),
             const SizedBox(height: 24),
-            _buildHowToBookGuide(),
+            _buildHowToBookGuide().animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.95, 0.95)),
             const SizedBox(height: 32),
-            _buildCategorySection(),
+            _buildCategorySection().animate().fadeIn(delay: 400.ms),
             const SizedBox(height: 32),
-            _buildWeightInput(),
+            _buildWeightInput().animate().fadeIn(delay: 600.ms).slideY(begin: 0.2),
             const SizedBox(height: 24),
             if (_scrapItems.isNotEmpty) ...[
-              _buildItemsList(),
+              _buildItemsList().animate().fadeIn().slideX(),
               const SizedBox(height: 32),
             ],
-            _buildContactForm(),
+            _buildContactForm().animate().fadeIn(delay: 800.ms),
             const SizedBox(height: 24),
-            if (_scrapItems.isNotEmpty) _buildSubmitButton(),
+            if (_scrapItems.isNotEmpty) _buildSubmitButton().animate().scale(curve: Curves.easeOutBack),
             const SizedBox(height: 100),
           ],
         ),
@@ -375,91 +412,94 @@ class _ScrapScreenState extends State<ScrapScreen> {
           style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.subtleColor),
         ),
         const SizedBox(height: 16),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.85,
-          ),
-          itemCount: _categoryIcons.length,
-          itemBuilder: (context, index) {
-            final category = _categoryIcons.keys.elementAt(index);
-            final icon = _categoryIcons[category];
-            final isSelected = category == _selectedCategory;
+        SizedBox(
+          height: 160,
+          child: ListView.builder(
+            controller: _categoryScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: _categoryIcons.length,
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            itemBuilder: (context, index) {
+              final category = _categoryIcons.keys.elementAt(index);
+              final icon = _categoryIcons[category];
+              final isSelected = category == _selectedCategory;
 
-            return InkWell(
-              onTap: () => setState(() => _selectedCategory = category),
-              borderRadius: BorderRadius.circular(20),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryColor : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryColor
-                        : Colors.grey.shade100,
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedCategory = category),
+                  borderRadius: BorderRadius.circular(24),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: 130,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.primaryColor : Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : Colors.grey.shade100,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isSelected
+                              ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                              : Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : AppTheme.primaryColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            icon,
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.primaryColor,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          category,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? Colors.white : AppTheme.textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _categoryDescriptions[category] ?? '',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 9,
+                            color: isSelected
+                                ? Colors.white70
+                                : AppTheme.subtleColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isSelected
-                          ? AppTheme.primaryColor.withValues(alpha: 0.2)
-                          : Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.2)
-                            : AppTheme.primaryColor.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        icon,
-                        color: isSelected
-                            ? Colors.white
-                            : AppTheme.primaryColor,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      category,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected ? Colors.white : AppTheme.textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _categoryDescriptions[category] ?? '',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 8,
-                        color: isSelected
-                            ? Colors.white70
-                            : AppTheme.subtleColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+              ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.2);
+            },
+          ),
         ),
       ],
     );

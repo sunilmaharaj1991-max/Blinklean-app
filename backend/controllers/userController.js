@@ -122,8 +122,47 @@ const updateUser = async (req, res) => {
   }
 };
 
+const updateAddress = async (req, res) => {
+  try {
+    const { address } = req.body;
+    if (!address) {
+      return res.status(400).json({ error: 'Address is required' });
+    }
+
+    const { Attributes } = await ddbDocClient.send(new UpdateCommand({
+      TableName: USERS_TABLE,
+      Key: { amplifyUid: req.user.uid },
+      UpdateExpression: 'set address = :a',
+      ExpressionAttributeValues: { ':a': address },
+      ReturnValues: 'ALL_NEW'
+    }));
+
+    res.json({ success: true, user: Attributes });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getUserStats = async (req, res) => {
+  try {
+    // Minimal placeholder stats
+    res.json({
+      success: true,
+      stats: {
+        totalBookings: 0,
+        completedBookings: 0,
+        totalSpent: 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   syncAmplifyUser,
   getCurrentUser,
-  updateUser
+  updateUser,
+  updateAddress,
+  getUserStats
 };

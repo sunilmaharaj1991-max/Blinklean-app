@@ -1,8 +1,36 @@
 {
   "auth": {
-    "blinkleanPhoneAuth": {
+    "blinkleanace65002": {
       "customAuth": false,
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn",
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "blinkleanace65002CreateAuthChallenge",
+          "triggerProvider": "Cognito"
+        },
+        {
+          "attributes": [
+            "Arn",
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "blinkleanace65002DefineAuthChallenge",
+          "triggerProvider": "Cognito"
+        },
+        {
+          "attributes": [
+            "Arn",
+            "Name"
+          ],
+          "category": "function",
+          "resourceName": "blinkleanace65002VerifyAuthChallengeResponse",
+          "triggerProvider": "Cognito"
+        }
+      ],
       "frontendAuthConfig": {
         "mfaConfiguration": "OFF",
         "mfaTypes": [
@@ -13,12 +41,11 @@
           "passwordPolicyMinLength": 8
         },
         "signupAttributes": [
-          "PHONE_NUMBER",
-          "NAME"
+          "EMAIL"
         ],
         "socialProviders": [],
         "usernameAttributes": [
-          "PHONE_NUMBER"
+          "EMAIL"
         ],
         "verificationMechanisms": [
           "PHONE_NUMBER"
@@ -28,11 +55,141 @@
       "service": "Cognito"
     }
   },
+  "function": {
+    "blinkleanace65002CreateAuthChallenge": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "blinkleanace65002DefineAuthChallenge": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "blinkleanace65002VerifyAuthChallengeResponse": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_blinkleanace65002CreateAuthChallenge_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanace65002CreateAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanace65002CreateAuthChallenge_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanace65002CreateAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanace65002DefineAuthChallenge_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanace65002DefineAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanace65002DefineAuthChallenge_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanace65002DefineAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanace65002VerifyAuthChallengeResponse_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanace65002VerifyAuthChallengeResponse"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanace65002VerifyAuthChallengeResponse_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanace65002VerifyAuthChallengeResponse"
+        }
+      ]
+    },
+    "AMPLIFY_storage_BlinkLeanServiceRequests_arn": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "BlinkLeanServiceRequests"
+        }
+      ]
+    },
+    "AMPLIFY_storage_BlinkLeanServiceRequests_partitionKeyName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "BlinkLeanServiceRequests"
+        }
+      ]
+    },
+    "AMPLIFY_storage_BlinkLeanServiceRequests_partitionKeyType": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "BlinkLeanServiceRequests"
+        }
+      ]
+    },
+    "AMPLIFY_storage_BlinkLeanServiceRequests_region": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "BlinkLeanServiceRequests"
+        }
+      ]
+    },
+    "AMPLIFY_storage_BlinkLeanServiceRequests_tableName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "BlinkLeanServiceRequests"
+        }
+      ]
+    },
+    "AMPLIFY_storage_blinkleana7418c5b_bucketName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "blinkleana7418c5b"
+        }
+      ]
+    },
+    "AMPLIFY_storage_blinkleana7418c5b_region": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "blinkleana7418c5b"
+        }
+      ]
+    }
+  },
   "storage": {
-    "s375b0da34": {
+    "BlinkLeanServiceRequests": {
       "dependsOn": [],
       "providerPlugin": "awscloudformation",
-      "service": "S3"
+      "service": "DynamoDB",
+      "serviceType": "imported"
+    },
+    "blinkleana7418c5b": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "S3",
+      "serviceType": "imported"
     }
   }
 }

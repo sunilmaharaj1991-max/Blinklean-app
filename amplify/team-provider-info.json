@@ -1,22 +1,47 @@
 {
   "dev": {
     "awscloudformation": {
-      "AuthRoleName": "amplify-blinklean-dev-4f4c7-authRole",
-      "UnauthRoleArn": "arn:aws:iam::758388042813:role/amplify-blinklean-dev-4f4c7-unauthRole",
-      "AuthRoleArn": "arn:aws:iam::758388042813:role/amplify-blinklean-dev-4f4c7-authRole",
-      "Region": "eu-north-1",
-      "DeploymentBucketName": "amplify-blinklean-dev-4f4c7-deployment",
-      "UnauthRoleName": "amplify-blinklean-dev-4f4c7-unauthRole",
-      "StackName": "amplify-blinklean-dev-4f4c7",
-      "StackId": "arn:aws:cloudformation:eu-north-1:758388042813:stack/amplify-blinklean-dev-4f4c7/e0f79ea0-2921-11f1-b527-06374be52085",
-      "AmplifyAppId": "d1gen2vs3n6srq"
+      "AuthRoleName": "amplify-blinklean-dev-4c300-authRole",
+      "UnauthRoleArn": "arn:aws:iam::042467473830:role/amplify-blinklean-dev-4c300-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::042467473830:role/amplify-blinklean-dev-4c300-authRole",
+      "Region": "ap-south-1",
+      "DeploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
+      "UnauthRoleName": "amplify-blinklean-dev-4c300-unauthRole",
+      "StackName": "amplify-blinklean-dev-4c300",
+      "StackId": "arn:aws:cloudformation:ap-south-1:042467473830:stack/amplify-blinklean-dev-4c300/82e87610-2b40-11f1-8fb7-02c7d5346d67",
+      "AmplifyAppId": "d28weajb6kmn6d",
+      "AuthTriggerTemplateURL": "https://s3.amazonaws.com/amplify-blinklean-dev-4c300-deployment/amplify-cfn-templates/auth/auth-trigger-cloudformation-template.json"
     },
     "categories": {
-      "storage": {
-        "s375b0da34": {}
-      },
       "auth": {
-        "blinkleanPhoneAuth": {}
+        "blinkleanace65002": {}
+      },
+      "storage": {
+        "blinkleana7418c5b": {
+          "bucketName": "unique-blinklean-storage",
+          "region": "ap-south-1"
+        },
+        "BlinkLeanServiceRequests": {
+          "tableName": "BlinkLean_ServiceRequests",
+          "region": "ap-south-1",
+          "arn": "arn:aws:dynamodb:ap-south-1:042467473830:table/BlinkLean_ServiceRequests",
+          "partitionKeyName": "RequestId",
+          "partitionKeyType": "S"
+        }
+      },
+      "function": {
+        "blinkleanace65002CreateAuthChallenge": {
+          "deploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
+          "s3Key": "amplify-builds/blinkleanace65002CreateAuthChallenge-47756d64417030573332-build.zip"
+        },
+        "blinkleanace65002DefineAuthChallenge": {
+          "deploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
+          "s3Key": "amplify-builds/blinkleanace65002DefineAuthChallenge-694b474b436e53317a32-build.zip"
+        },
+        "blinkleanace65002VerifyAuthChallengeResponse": {
+          "deploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
+          "s3Key": "amplify-builds/blinkleanace65002VerifyAuthChallengeResponse-61796e376147344e4c69-build.zip"
+        }
       }
     }
   }

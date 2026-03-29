@@ -127,9 +127,67 @@ const getProviderBookings = async (req, res) => {
   }
 };
 
+const assignBookingToProvider = async (req, res) => {
+  try {
+    const { bookingId, providerId, type } = req.body;
+    const table = type === 'scrap' ? SCRAP_TABLE : BOOKINGS_TABLE;
+    const key = type === 'scrap' ? { pickupId: bookingId } : { bookingId };
+
+    const { Attributes: booking } = await ddbDocClient.send(new UpdateCommand({
+      TableName: table,
+      Key: key,
+      UpdateExpression: 'set providerId = :p, #s = :s, updatedAt = :u',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':p': providerId,
+        ':s': 'assigned',
+        ':u': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    }));
+
+    res.json({ success: true, booking });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateBookingStatus = async (req, res) => {
+  try {
+    const { bookingId, status, type, note } = req.body;
+    const table = type === 'scrap' ? SCRAP_TABLE : BOOKINGS_TABLE;
+    const key = type === 'scrap' ? { pickupId: bookingId } : { bookingId };
+    const now = new Date().toISOString();
+
+    const { Attributes: booking } = await ddbDocClient.send(new UpdateCommand({
+      TableName: table,
+      Key: key,
+      UpdateExpression: 'set #s = :s, updatedAt = :u, statusHistory = list_append(if_not_exists(statusHistory, :empty), :h)',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':s': status,
+        ':u': now,
+        ':empty': [],
+        ':h': [{
+          status,
+          timestamp: now,
+          note: note || `Status updated to ${status}`
+        }]
+      },
+      ReturnValues: 'ALL_NEW'
+    }));
+
+    res.json({ success: true, booking });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getProviderProfile,
   getProviderById,
   updateProviderStatus,
-  getProviderBookings
+  getProviderBookings,
+  assignBookingToProvider,
+  updateBookingStatus
 };

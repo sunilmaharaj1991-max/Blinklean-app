@@ -39,8 +39,7 @@ app.use('/scrap-pickup', scrapRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    timestamp: new Date().toISOString()
   });
 });
 

@@ -1,25 +1,35 @@
 import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'api_service.dart';
 
 enum UserRole { customer, partner, admin }
 
 class AuthService {
+  static UserRole? _debugRole;
+
   Future<UserRole> getUserRole() async {
+    if (kDebugMode && _debugRole != null) return _debugRole!;
+    
     try {
-      final attributes = await Amplify.Auth.fetchUserAttributes();
-      for (final attribute in attributes) {
-        if (attribute.userAttributeKey.toString() == 'custom:role') {
-          if (attribute.value == 'admin') return UserRole.admin;
-          if (attribute.value == 'partner' || attribute.value == 'provider') return UserRole.partner;
-        }
-      }
+      final session = await Amplify.Auth.fetchAuthSession() as CognitoAuthSession;
+      final groups = session.userPoolTokensResult.value.idToken.groups;
+      
+      if (groups.contains('Admins')) return UserRole.admin;
+      if (groups.contains('Providers')) return UserRole.partner;
+      
       return UserRole.customer; // Default
     } catch (e) {
       debugPrint('Error fetching role: $e');
       return UserRole.customer;
     }
   }
+
+  static void setDebugRole(UserRole role) {
+    _debugRole = role;
+  }
+
+  static bool get debugRoleSet => _debugRole != null;
 
   Future<AuthUser?> get currentUser async {
     try {
@@ -29,10 +39,13 @@ class AuthService {
     }
   }
 
-  Future<SignInResult?> signInWithPhone(
-    String phoneNumber,
-    String password,
-  ) async {
+  /// Standard Sign-In (Email/Password for Providers)
+  Future<SignInResult?> signInProvider(String email, String password) async {
+    return await Amplify.Auth.signIn(username: email, password: password);
+  }
+
+  /// Phone Sign-In (Trigger SMS OTP for Customers)
+  Future<SignInResult?> signInCustomer(String phoneNumber, String password) async {
     return await Amplify.Auth.signIn(username: phoneNumber, password: password);
   }
 
@@ -40,11 +53,13 @@ class AuthService {
     required String phoneNumber,
     required String password,
     required String name,
+    required String email,
     String? address,
   }) async {
     final userAttributes = {
       AuthUserAttributeKey.phoneNumber: phoneNumber,
       AuthUserAttributeKey.name: name,
+      AuthUserAttributeKey.email: email,
     };
 
     return await Amplify.Auth.signUp(

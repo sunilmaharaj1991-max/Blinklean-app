@@ -6,7 +6,6 @@ const {
   ScanCommand,
   QueryCommand 
 } = require('@aws-sdk/lib-dynamodb');
-const { v4: uuidv4 } = require('uuid');
 
 const BOOKINGS_TABLE = process.env.DYNAMODB_BOOKINGS_TABLE || 'BlinkleanBookings';
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'BlinkleanUsers';

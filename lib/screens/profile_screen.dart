@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/app_theme.dart';
+import 'admin/admin_navigation_screen.dart';
+import 'provider/partner_navigation_screen.dart';
 import 'booking_history_screen.dart';
 
 import 'package:amplify_flutter/amplify_flutter.dart';
@@ -146,7 +150,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Colors.white,
                         ),
                       ),
-                    ),
+                    ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.5),
+                    const SizedBox(height: 24),
+                    // Developer Portal Switcher
+                    if (kDebugMode) _buildPortalSwitcher(),
                     const SizedBox(height: 24),
                     // Quick Actions
                     Row(
@@ -156,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.history_rounded,
                             'Bookings',
                             '0',
-                          ),
+                          ).animate().fadeIn(delay: 600.ms).slideX(begin: -0.2),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -164,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.favorite_rounded,
                             'Favorites',
                             '0',
-                          ),
+                          ).animate().fadeIn(delay: 700.ms).slideX(begin: 0),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -172,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.location_on_rounded,
                             'Addresses',
                             '0',
-                          ),
+                          ).animate().fadeIn(delay: 800.ms).slideX(begin: 0.2),
                         ),
                       ],
                     ),
@@ -532,6 +539,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Icons.chevron_right_rounded,
                 color: Colors.grey.shade400,
                 size: 24,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPortalSwitcher() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.developer_mode_rounded, color: Colors.orangeAccent, size: 14),
+              const SizedBox(width: 8),
+              Text(
+                'DEV PORTAL SWITCHER',
+                style: GoogleFonts.outfit(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildPortalTab('Partner', Icons.handyman_rounded, Colors.greenAccent, () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const PartnerNavigationScreen()));
+              }),
+              const SizedBox(width: 8),
+              _buildPortalTab('Admin', Icons.shield_rounded, Colors.indigoAccent, () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const AdminNavigationScreen()));
+              }),
+            ],
+          ),
+        ],
+      ),
+    ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack);
+  }
+
+  Widget _buildPortalTab(String label, IconData icon, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),

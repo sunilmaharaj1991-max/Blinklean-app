@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_authenticator/amplify_authenticator.dart';
@@ -25,17 +24,20 @@ void main() async {
 Future<void> _configureAmplify() async {
   try {
     if (!Amplify.isConfigured) {
-      await Amplify.addPlugins([
-        AmplifyAuthCognito(),
-        AmplifyStorageS3(),
-      ]);
+      // Add the Auth and Storage plugins
+      final auth = AmplifyAuthCognito();
+      final storage = AmplifyStorageS3();
+
+      await Amplify.addPlugins([auth, storage]);
+
+      // Configure with the generated file
       await Amplify.configure(amplifyconfig);
     }
-    debugPrint('BlinkLean AWS: Successfully configured');
+    safePrint('BlinkLean Backend is connected! 🚀');
   } on AmplifyAlreadyConfiguredException {
-    debugPrint('BlinkLean AWS: Already configured');
+    safePrint('BlinkLean AWS: Already configured');
   } catch (e) {
-    debugPrint('BlinkLean AWS Error: $e');
+    safePrint('Error configuring Amplify: $e');
   }
 }
 
@@ -47,34 +49,6 @@ class BlinKleanApp extends StatefulWidget {
 }
 
 class _BlinKleanAppState extends State<BlinKleanApp> {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BlinKlean',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const MainEntry(),
-        '/admin-onboarding': (context) => const AdminProviderOnboardingScreen(),
-        '/provider-login': (context) => const ProviderLoginScreen(),
-      },
-    );
-  }
-}
-
-class MainEntry extends StatefulWidget {
-  const MainEntry({super.key});
-
-  @override
-  State<MainEntry> createState() => _MainEntryState();
-}
-
-class _MainEntryState extends State<MainEntry> {
-  final AuthService _auth = AuthService();
-
   @override
   Widget build(BuildContext context) {
     return Authenticator(
@@ -94,26 +68,60 @@ class _MainEntryState extends State<MainEntry> {
             return null;
         }
       },
-      child: FutureBuilder<UserRole>(
-        future: _auth.getUserRole(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          final role = snapshot.data ?? UserRole.customer;
-          
-          switch (role) {
-            case UserRole.admin:
-              return const AdminNavigationScreen();
-            case UserRole.partner:
-              return const PartnerNavigationScreen();
-            case UserRole.customer:
-              return const MainNavigationScreen();
-          }
+      child: MaterialApp(
+        title: 'BlinKlean',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        builder: Authenticator.builder(),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const SplashScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/home': (context) => const MainEntry(),
+          '/admin-onboarding': (context) => const AdminProviderOnboardingScreen(),
+          '/provider-login': (context) => const ProviderLoginScreen(),
         },
       ),
     );
+  }
+}
+
+class MainEntry extends StatefulWidget {
+  const MainEntry({super.key});
+
+  @override
+  State<MainEntry> createState() => _MainEntryState();
+}
+
+class _MainEntryState extends State<MainEntry> {
+  final AuthService _auth = AuthService();
+
+  @override
+  Widget build(BuildContext context) {
+    final Future<UserRole> roleFuture = _auth.getUserRole();
+    
+    final child = FutureBuilder<UserRole>(
+      future: roleFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final role = snapshot.data ?? UserRole.customer;
+        
+        switch (role) {
+          case UserRole.admin:
+            return const AdminNavigationScreen();
+          case UserRole.partner:
+            return const PartnerNavigationScreen();
+          case UserRole.customer:
+            return const MainNavigationScreen();
+        }
+      },
+    );
+
+    // Return the role-based navigation child directly as Authenticator now wraps the whole app
+    return child;
   }
 }

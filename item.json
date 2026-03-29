@@ -1,0 +1,17 @@
+{
+    "RequestId": {
+        "S": "REQ-001"
+    },
+    "CustomerName": {
+        "S": "Jeevith"
+    },
+    "ServiceType": {
+        "S": "Scrap Pickup"
+    },
+    "Weight": {
+        "S": "15kg"
+    },
+    "Status": {
+        "S": "Pending"
+    }
+}

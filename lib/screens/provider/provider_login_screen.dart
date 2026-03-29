@@ -2,7 +2,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_theme.dart';
-import '../../services/provider_onboarding_service.dart';
+import '../../services/auth_service.dart';
 
 class ProviderLoginScreen extends StatefulWidget {
   const ProviderLoginScreen({super.key});
@@ -22,28 +22,22 @@ class _ProviderLoginScreenState extends State<ProviderLoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final service = ProviderOnboardingService();
-      final isVerified = await service.providerLogin(
-        _idController.text.trim(),
-        _passController.text.trim(), // Assuming pass is also ID for demo or a default
+      final authService = AuthService();
+      final result = await authService.signInProvider(
+        _idController.text.trim(), // Utilizing Email Alias
+        _passController.text.trim(),
       );
 
-      if (!isVerified) {
-        setState(() => _isAwaiting = true);
-      } else {
-        // Navigate to Provider Dashboard
+      if (result?.isSignedIn ?? false) {
+        // Navigate to Home which will check the Role/Group via MainEntry
         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Welcome Back! Verified Account.')),
-          );
-          // Redirect to actual dashboard
-          Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); 
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Inaccurate ID Or Password : $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Login Failed: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {

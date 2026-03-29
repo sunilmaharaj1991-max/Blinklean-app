@@ -6,7 +6,15 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://blinklean-api.onrender.com/api';
+  static String get baseUrl {
+    if (kDebugMode && !kIsWeb) {
+      // In debug mode, use the local backend running on port 3000
+      // For Android emulator, use 10.0.2.2. For physical/iOS, use localhost or machine IP.
+      return 'http://localhost:3000/api';
+    }
+    return 'https://blinklean-api.onrender.com/api';
+  }
+  
   static const String awsScrapApiUrl = 'https://3090drir79.execute-api.ap-south-1.amazonaws.com/prod/scrap-pickup';
 
   String? _idToken;
@@ -55,9 +63,10 @@ class ApiService {
   }) async {
     await refreshToken();
     try {
+      final url = endpoint.startsWith('http') ? endpoint : '$baseUrl$endpoint';
       final response = await http
           .get(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: _headers(requiresAuth: requiresAuth),
           )
           .timeout(const Duration(seconds: 30));
@@ -81,9 +90,10 @@ class ApiService {
   }) async {
     await refreshToken();
     try {
+      final url = endpoint.startsWith('http') ? endpoint : '$baseUrl$endpoint';
       final response = await http
           .post(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: _headers(requiresAuth: requiresAuth),
             body: body != null ? jsonEncode(body) : null,
           )
@@ -185,24 +195,35 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> syncUser({
-    required String name,
-    required String phoneNumber,
-    String? address,
+    required String uid,
+    String? name,
+    String? email,
+    String? phone,
   }) async {
-    await _storeInAWS('users', {
+    return post('/users/sync', body: {
       'name': name,
-      'phoneNumber': phoneNumber,
-      'address': address,
-      'syncedAt': DateTime.now().toIso8601String(),
+      'email': email,
+      'phone': phone,
     });
-    return {'success': true};
   }
 
-  // --- RESTORED METHODS FOR COMPATIBILITY ---
+  // === PROFILE MANAGEMENT ===
   
-  Future<Map<String, dynamic>> getUserProfile() async => {};
-  Future<Map<String, dynamic>> updateUser(Map<String, dynamic> updates) async => {};
-  Future<Map<String, dynamic>> updateAddress(Map<String, dynamic> address) async => {};
+  Future<Map<String, dynamic>> getUserProfile() async {
+    return get('/users/me');
+  }
+
+  Future<Map<String, dynamic>> updateUser(Map<String, dynamic> updates) async {
+    return put('/users/me', body: updates);
+  }
+
+  Future<Map<String, dynamic>> updateAddress(Map<String, dynamic> address) async {
+    return put('/users/address', body: address);
+  }
+
+  Future<Map<String, dynamic>> getUserStats() async {
+    return get('/users/stats');
+  }
   
   Future<List<dynamic>> getServices({String? category}) async => [];
   Future<List<dynamic>> getServicesByCategory(String category) async => [];

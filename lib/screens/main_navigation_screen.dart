@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/app_theme.dart';
 import 'home_screen.dart';
 import 'all_services_screen.dart';
@@ -108,7 +109,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               isSelected ? activeIcon : inactiveIcon,
               color: isSelected ? AppTheme.primaryColor : Colors.grey.shade400,
               size: 24,
-            ),
+            ).animate(target: isSelected ? 1 : 0).scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 200.ms),
             if (isSelected) ...[
               const SizedBox(width: 8),
               Text(
@@ -118,7 +119,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   fontWeight: FontWeight.w700,
                   color: AppTheme.primaryColor,
                 ),
-              ),
+              ).animate().fadeIn(duration: 200.ms).slideX(begin: -0.2),
             ],
           ],
         ),

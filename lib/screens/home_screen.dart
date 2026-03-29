@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/app_theme.dart';
 import '../models/service_model.dart';
 import 'scrap_screen.dart';
@@ -163,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ],
                       ),
                       child: Image.asset('assets/images/logo_icon.png'),
-                    ),
+                    ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
                     const SizedBox(width: 14),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen>
                             fontSize: 22,
                             letterSpacing: -0.5,
                           ),
-                        ),
+                        ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
                         InkWell(
                           onTap: () => Navigator.push(
                             context,
@@ -234,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen>
                       letterSpacing: 1.5,
                     ),
                   ),
-                ),
+                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
                 const SizedBox(height: 12),
                 Text(
                   'Expert Care for\nYour Living Space',
@@ -245,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen>
                     height: 1.1,
                     letterSpacing: -1,
                   ),
-                ),
+                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
                 const SizedBox(height: 12),
                 Text(
                   'On-demand professional cleaning and maintenance services powered by smart tech.',
@@ -254,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen>
                     fontSize: 12,
                     height: 1.5,
                   ),
-                ),
+                ).animate().fadeIn(delay: 500.ms),
               ],
             ),
           ),
@@ -277,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen>
                 _buildVerticalDivider(),
                 _buildModernStat('100%', 'Eco-Wise'),
               ],
-            ),
+            ).animate().fadeIn(delay: 600.ms).scale(begin: const Offset(0.9, 0.9)),
           ),
           const SizedBox(height: 28),
         ],
@@ -346,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen>
               Icons.local_fire_department_rounded,
               const Color(0xFFFF5722),
             ),
-          ),
+          ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
           const SizedBox(height: 16),
           SizedBox(
             height: 240,
@@ -357,7 +358,10 @@ class _HomeScreenState extends State<HomeScreen>
               itemCount: popularServices.length,
               itemBuilder: (context, index) {
                 final service = popularServices[index];
-                return _buildModernPopularCard(service);
+                return _buildModernPopularCard(service)
+                    .animate(delay: (200 + (index * 100)).ms)
+                    .fadeIn(duration: 500.ms)
+                    .slideX(begin: 0.2, curve: Curves.easeOutCubic);
               },
             ),
           ),
@@ -369,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen>
               Icons.spa_rounded,
               AppTheme.primaryColor,
             ),
-          ),
+          ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -377,7 +381,10 @@ class _HomeScreenState extends State<HomeScreen>
               children: ServiceModel.getHomeCleaningServices()
                   .take(4)
                   .map((s) => _buildServiceItem(s))
-                  .toList(),
+                  .toList()
+                  .animate(interval: 50.ms)
+                  .fadeIn(duration: 400.ms)
+                  .slideY(begin: 0.1),
             ),
           ),
           const SizedBox(height: 16),
@@ -509,17 +516,21 @@ class _HomeScreenState extends State<HomeScreen>
             'Car Services',
             Icons.directions_car_rounded,
             const Color(0xFF2979FF),
-          ),
+          ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
           const SizedBox(height: 14),
           ...ServiceModel.getVehicleServices()
               .where((s) => s.id.contains('car'))
-              .map((s) => _buildServiceItem(s)),
+              .map((s) => _buildServiceItem(s))
+              .toList()
+              .animate(interval: 50.ms)
+              .fadeIn(duration: 400.ms)
+              .slideY(begin: 0.1),
           const SizedBox(height: 24),
           _buildSectionTitle(
             'Bike & Others',
             Icons.two_wheeler_rounded,
             const Color(0xFFFF6B35),
-          ),
+          ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
           const SizedBox(height: 14),
           ...ServiceModel.getVehicleServices()
               .where(
@@ -528,7 +539,11 @@ class _HomeScreenState extends State<HomeScreen>
                     s.id.contains('auto') ||
                     s.id.contains('cycle'),
               )
-              .map((s) => _buildServiceItem(s)),
+              .map((s) => _buildServiceItem(s))
+              .toList()
+              .animate(interval: 50.ms)
+              .fadeIn(duration: 400.ms)
+              .slideY(begin: 0.1),
           const SizedBox(height: 80),
         ],
       ),
@@ -633,9 +648,13 @@ class _HomeScreenState extends State<HomeScreen>
             'Laundry Services',
             Icons.local_laundry_service_rounded,
             const Color(0xFFFF6D00),
-          ),
+          ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
           const SizedBox(height: 14),
-          ...ServiceModel.getLaundryServices().map((s) => _buildServiceItem(s)),
+          ...ServiceModel.getLaundryServices().map((s) => _buildServiceItem(s))
+              .toList()
+              .animate(interval: 50.ms)
+              .fadeIn(duration: 400.ms)
+              .slideY(begin: 0.1),
           const SizedBox(height: 80),
         ],
       ),
