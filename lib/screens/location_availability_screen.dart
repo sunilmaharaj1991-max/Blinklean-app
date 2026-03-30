@@ -1,9 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/app_theme.dart';
 import 'main_navigation_screen.dart';
 import '../core/app_state.dart';
 import '../services/location_service.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/glass_card.dart';
 
 class LocationAvailabilityScreen extends StatefulWidget {
   const LocationAvailabilityScreen({super.key});
@@ -53,254 +57,344 @@ class _LocationAvailabilityScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppTheme.backgroundColor,
-              AppTheme.primaryColor.withValues(alpha: 0.1),
-            ],
-          ),
-        ),
+      body: PremiumBackground(
         child: SafeArea(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 60),
-                Hero(
-                  tag: 'app_logo',
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.location_searching_rounded,
-                      size: 60,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 40),
-                Text(
-                  'Check Service Area',
-                  style: GoogleFonts.poppins(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textColor,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Enter your pincode to see if BlinkLean\nis available in your neighborhood.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 50),
                 
-                // Pincode Input Card
+                // Animated Icon Header
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 15,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
+                    color: Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white10),
                   ),
+                  child: Hero(
+                    tag: 'location_search_icon',
+                    child: Icon(
+                      Icons.location_searching_rounded,
+                      size: 56,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ).animate()
+                 .scale(duration: 600.ms, curve: Curves.easeOutBack)
+                 .shimmer(delay: 1.seconds, duration: 1.5.seconds),
+                
+                const SizedBox(height: 32),
+                
+                Text(
+                  'Check Service Area',
+                  style: GoogleFonts.outfit(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+                
+                const SizedBox(height: 12),
+                
+                Text(
+                  'Enter your pincode to see if BlinkLean\nis available in your neighborhood.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    color: Colors.white70,
+                    height: 1.5,
+                  ),
+                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+                
+                const SizedBox(height: 40),
+                
+                // Pincode Input Card
+                GlassCard(
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      TextField(
-                        controller: _pincodeController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 8,
-                        ),
-                        textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          counterText: '',
-                          hintText: '000000',
-                          hintStyle: TextStyle(
-                            color: Colors.grey.shade300,
-                            letterSpacing: 8,
-                          ),
-                          errorText: _errorText,
-                          prefixIcon: const Icon(Icons.pin_drop_outlined),
-                        ),
-                        onChanged: (val) {
-                          if (val.length == 6) {
-                            _handleCheckAvailability();
-                          }
-                        },
-                      ),
+                      _buildPincodeField(),
                       const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: _isChecking ? null : _handleCheckAvailability,
-                          style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            backgroundColor: AppTheme.primaryColor,
-                          ),
-                          child: _isChecking
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : Text(
-                                  'Check Availability',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ),
-                      ),
+                      _buildCheckButton(),
                     ],
                   ),
-                ),
+                ).animate().fadeIn(delay: 400.ms).scale(begin: const Offset(0.95, 0.95)),
 
                 const SizedBox(height: 40),
 
-                // Result View
-                if (_isAvailable != null)
-                  _buildResultView()
-                else if (!_isChecking && _pincodeController.text.isEmpty)
-                   _buildRecentAreas(),
+                // Result View or Popular Areas
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.1),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _isAvailable != null
+                      ? _buildResultView()
+                      : _buildRecentAreas(),
+                ),
 
                 const SizedBox(height: 40),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPincodeField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: TextField(
+        controller: _pincodeController,
+        keyboardType: TextInputType.number,
+        maxLength: 6,
+        style: GoogleFonts.outfit(
+          fontSize: 32,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+          letterSpacing: 12,
+        ),
+        textAlign: TextAlign.center,
+        cursorColor: AppTheme.primaryColor,
+        decoration: InputDecoration(
+          counterText: '',
+          hintText: '000000',
+          hintStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.1),
+            letterSpacing: 12,
+          ),
+          errorText: _errorText,
+          errorStyle: GoogleFonts.outfit(color: Colors.redAccent),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 20),
+        ),
+        onChanged: (val) {
+          if (val.length == 6) {
+            _handleCheckAvailability();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildCheckButton() {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _isChecking ? null : _handleCheckAvailability,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        child: _isChecking
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              )
+            : Text(
+                'CHECK AVAILABILITY',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 1.2,
+                ),
+              ),
       ),
     );
   }
 
   Widget _buildResultView() {
-    final Color color = _isAvailable! ? Colors.green : Colors.orange;
-    final IconData icon = _isAvailable! 
+    final bool available = _isAvailable!;
+    final Color color = available ? Colors.tealAccent : Colors.orangeAccent;
+    final IconData icon = available 
         ? Icons.check_circle_outline_rounded 
         : Icons.info_outline_rounded;
 
-    return Container(
+    return GlassCard(
+      key: ValueKey('result_${available}'),
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
+      borderOpacity: 0.2,
       child: Column(
         children: [
-          Icon(icon, color: color, size: 50),
-          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 48),
+          ),
+          const SizedBox(height: 20),
           Text(
-            _isAvailable! ? 'Great News!' : 'Coming Soon!',
-            style: GoogleFonts.poppins(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: color,
+            available ? 'Great News!' : 'Coming Soon!',
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            _isAvailable! 
+            available 
                 ? 'Services are available in $_areaName.'
                 : 'We haven\'t reached your area yet, but we\'re expanding fast!',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(fontSize: 15),
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              color: Colors.white70,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 24),
-          if (_isAvailable!)
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  AppState().setLocation(
-                    _pincodeController.text, 
-                    _isAvailable!, 
-                    _areaName
-                  );
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const MainNavigationScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Start Booking'),
-              ),
-            )
+          if (available)
+            _buildStartBookingButton()
           else
-            Column(
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Enter Phone for Notify',
-                    hintStyle: GoogleFonts.poppins(fontSize: 14),
-                    prefixText: '+91 ',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () {
-                     // Notify logic
-                  },
-                  child: const Text('Notify Me'),
-                ),
-              ],
-            ),
+            _buildNotifyMeSection(),
         ],
       ),
     );
   }
 
-  Widget _buildRecentAreas() {
+  Widget _buildStartBookingButton() {
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        color: Colors.tealAccent.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+      ),
+      child: TextButton(
+        onPressed: () {
+          AppState().setLocation(
+            _pincodeController.text, 
+            _isAvailable!, 
+            _areaName
+          );
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, anim, __) => FadeTransition(opacity: anim, child: const MainNavigationScreen()),
+              transitionDuration: const Duration(milliseconds: 800),
+            ),
+          );
+        },
+        child: Text(
+          'START BOOKING',
+          style: GoogleFonts.outfit(
+            color: Colors.tealAccent,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotifyMeSection() {
     return Column(
       children: [
-        Text(
-          'Popular Areas',
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: TextField(
+            style: GoogleFonts.outfit(color: Colors.white),
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              hintText: 'Enter Phone Number',
+              hintStyle: GoogleFonts.outfit(color: Colors.white24),
+              prefixText: '+91 ',
+              prefixStyle: GoogleFonts.outfit(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+              border: InputBorder.none,
+            ),
           ),
         ),
         const SizedBox(height: 16),
+        TextButton(
+          onPressed: () {
+             // Notify logic
+          },
+          child: Text(
+            'NOTIFY ME ON LAUNCH',
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentAreas() {
+    return Column(
+      key: const ValueKey('popular_areas'),
+      children: [
+        Row(
+          children: [
+            const Expanded(child: Divider(color: Colors.white10)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'POPULAR AREAS',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white54,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+            const Expanded(child: Divider(color: Colors.white10)),
+          ],
+        ),
+        const SizedBox(height: 24),
         Wrap(
           spacing: 12,
           runSpacing: 12,
+          alignment: WrapAlignment.center,
           children: [
             _buildAreaChip('Vijayanagar', '560040'),
             _buildAreaChip('Rajajinagar', '560023'),
@@ -312,21 +406,36 @@ class _LocationAvailabilityScreenState
   }
 
   Widget _buildAreaChip(String name, String pin) {
-    return InkWell(
-      onTap: () {
-        _pincodeController.text = pin;
-        _handleCheckAvailability();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Text(
-          name,
-          style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.primaryColor),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _pincodeController.text = pin;
+          _handleCheckAvailability();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.location_on_rounded, size: 14, color: AppTheme.primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                name,
+                style: GoogleFonts.outfit(
+                  fontSize: 14, 
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -6,16 +6,11 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 
 class ApiService {
-  static String get baseUrl {
-    if (kDebugMode && !kIsWeb) {
-      // In debug mode, use the local backend running on port 3000
-      // For Android emulator, use 10.0.2.2. For physical/iOS, use localhost or machine IP.
-      return 'http://localhost:3000/api';
-    }
-    return 'https://blinklean-api.onrender.com/api';
-  }
+  // === AWS CONFIGURATION ===
+  // Primary AWS API Gateway (Mumbai)
+  static const String _awsApiUrl = 'https://3090drir79.execute-api.ap-south-1.amazonaws.com/prod';
   
-  static const String awsScrapApiUrl = 'https://3090drir79.execute-api.ap-south-1.amazonaws.com/prod/scrap-pickup';
+  static String get baseUrl => _awsApiUrl;
 
   String? _idToken;
 
@@ -73,13 +68,10 @@ class ApiService {
 
       return _handleResponse(response);
     } on TimeoutException {
-      throw ApiException('Request timed out. The server might be sleeping. Please try again.');
+      throw ApiException('Request timed out. Please try again.');
     } catch (e) {
       if (e is ApiException) rethrow;
-      if (e.toString().contains('Failed to fetch') || e.toString().contains('Connection refused')) {
-        throw ApiException('Could not connect to the Blinklean server. Please check your internet or try again in a few moments.');
-      }
-      throw ApiException('Network error: ${e.toString()}');
+      throw ApiException('AWS Connection Error: Please check your internet or AWS credentials.');
     }
   }
 
@@ -104,7 +96,7 @@ class ApiService {
       throw ApiException('Request timed out. Please check your connection.');
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Network error: ${e.toString()}');
+      throw ApiException('AWS Connection Error: ${e.toString()}');
     }
   }
 
@@ -128,13 +120,26 @@ class ApiService {
       throw ApiException('Request timed out. Please check your connection.');
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Network error: ${e.toString()}');
+      throw ApiException('AWS Connection Error: ${e.toString()}');
     }
   }
 
-  // === AWS S3 STORAGE FALLBACK FOR BOOKINGS ===
-  // Note: Storing in S3 as JSON satisfies the "Stored in AWS" requirement
-  // until a full AppSync API (GraphQL) is added to the project.
+  // === AWS DATA PERSISTENCE (S3 & DYNAMODB) ===
+
+  /// Fetch Master Data (Services/Categories) from S3 satisfy "Saved in AWS"
+  Future<List<dynamic>> fetchMasterData(String type) async {
+    try {
+      final result = await Amplify.Storage.downloadData(
+        path: StoragePath.fromString('master/$type.json'),
+      ).result;
+      
+      final String jsonString = utf8.decode(result.bytes);
+      return jsonDecode(jsonString) as List<dynamic>;
+    } catch (e) {
+      debugPrint('S3 Master Data Error ($type): $e');
+      return []; // Fallback to empty if S3 file is missing
+    }
+  }
 
   Future<void> _storeInAWS(String path, Map<String, dynamic> data) async {
     try {
@@ -153,100 +158,166 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> createBooking(Map<String, dynamic> bookingData) async {
-    await _storeInAWS('bookings', bookingData);
-    return {'success': true, 'id': 'AWS_${DateTime.now().millisecondsSinceEpoch}'};
-  }
+  // === USER & PROFILE MANAGEMENT ===
 
-  Future<Map<String, dynamic>> createScrapPickup(Map<String, dynamic> pickupData) async {
+  Future<Map<String, dynamic>> getUserProfile() async {
     try {
-      // First, attempt to store via the modern AWS API endpoint
-      final response = await http.post(
-        Uri.parse(awsScrapApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(pickupData),
-      ).timeout(const Duration(seconds: 20));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('Successfully created scrap pickup via AWS API Gateway');
-        return jsonDecode(response.body) as Map<String, dynamic>;
+      final user = await Amplify.Auth.getCurrentUser();
+      final attrs = await Amplify.Auth.fetchUserAttributes();
+      
+      final map = {
+        'userId': user.userId,
+        'username': user.username,
+      };
+      for (var e in attrs) {
+        map[e.userAttributeKey.toString()] = e.value;
       }
-
-      // Fallback to direct S3 storage if API fails
-      debugPrint('AWS API failed (status ${response.statusCode}), falling back to direct S3 storage');
-      await _storeInAWS('scrap', pickupData);
-      return {'success': true, 'id': 'AWS_SCRAP_BACKUP_${DateTime.now().millisecondsSinceEpoch}'};
+      return map;
     } catch (e) {
-      debugPrint('AWS API Error: $e, falling back to direct S3 storage');
-      try {
-        await _storeInAWS('scrap', pickupData);
-        return {'success': true, 'id': 'AWS_SCRAP_BACKUP_${DateTime.now().millisecondsSinceEpoch}'};
-      } catch (innerError) {
-        throw ApiException('Failed to create scrap pickup: $e');
-      }
+      // Fallback to API if Cognito fails
+      return get('/users/me');
     }
   }
 
-  Future<bool> checkServiceAvailability(String pincode) async {
-    return pincode.startsWith('560');
-  }
-
-  Future<Map<String, dynamic>> syncUser({
-    required String uid,
-    String? name,
-    String? email,
-    String? phone,
-  }) async {
-    return post('/users/sync', body: {
-      'name': name,
-      'email': email,
-      'phone': phone,
-    });
-  }
-
-  // === PROFILE MANAGEMENT ===
-  
-  Future<Map<String, dynamic>> getUserProfile() async {
-    return get('/users/me');
-  }
-
   Future<Map<String, dynamic>> updateUser(Map<String, dynamic> updates) async {
-    return put('/users/me', body: updates);
+    try {
+      // Try to update in Cognito first
+      List<AuthUserAttribute> attrs = [];
+      if (updates.containsKey('name')) {
+        attrs.add(AuthUserAttribute(
+          userAttributeKey: AuthUserAttributeKey.name,
+          value: updates['name'],
+        ));
+      }
+      if (updates.containsKey('email')) {
+        attrs.add(AuthUserAttribute(
+          userAttributeKey: AuthUserAttributeKey.email,
+          value: updates['email'],
+        ));
+      }
+      
+      if (attrs.isNotEmpty) {
+        await Amplify.Auth.updateUserAttributes(attributes: attrs);
+      }
+      
+      // Also notify AWS API Gateway to sync DynamoDB
+      return put('/users/me', body: updates);
+    } catch (e) {
+      // If Cognito fails, just use API
+      return put('/users/me', body: updates);
+    }
   }
 
   Future<Map<String, dynamic>> updateAddress(Map<String, dynamic> address) async {
     return put('/users/address', body: address);
   }
 
-  Future<Map<String, dynamic>> getUserStats() async {
-    return get('/users/stats');
+  // === BOOKING MANAGEMENT (AWS DYNAMODB / API GATEWAY) ===
+
+  Future<Map<String, dynamic>> createBooking(Map<String, dynamic> bookingData) async {
+    // 1. Audit trail in S3
+    await _storeInAWS('bookings', bookingData);
+    
+    // 2. Real-time DB write via API Gateway
+    return post('/booking/create', body: bookingData);
   }
-  
-  Future<List<dynamic>> getServices({String? category}) async => [];
-  Future<List<dynamic>> getServicesByCategory(String category) async => [];
-  Future<Map<String, dynamic>> getServiceById(String id) async => {};
-  Future<List<dynamic>> getCategories() async => [];
 
   Future<Map<String, dynamic>> getUserBookings({String? status, int page = 1}) async {
-    return {'bookings': [], 'total': 0};
+    return get('/bookings/me?status=$status');
   }
 
-  Future<Map<String, dynamic>> getBookingById(String bookingId) async => {};
-  
-  Future<Map<String, dynamic>> cancelBooking(String bookingId, {String? reason}) async => {'success': true};
-  
-  Future<Map<String, dynamic>> rateBooking(String bookingId, {required int stars, String? review}) async => {'success': true};
+  Future<Map<String, dynamic>> getBookingById(String bookingId) async {
+    return get('/bookings/$bookingId');
+  }
 
-  Future<List<dynamic>> getUserScrapPickups({String? status}) async => [];
+  Future<Map<String, dynamic>> cancelBooking(String bookingId, {String? reason}) async {
+    return post('/bookings/$bookingId/cancel', body: {'reason': reason});
+  }
 
-  Future<Map<String, dynamic>> getProviderProfile() async => {};
+  Future<Map<String, dynamic>> rateBooking(String bookingId, {required int stars, String? review}) async {
+    return post('/bookings/$bookingId/rate', body: {'stars': stars, 'review': review});
+  }
+
+  // === SCRAP & PICKUP (AWS API GATEWAY) ===
+
+  Future<Map<String, dynamic>> createScrapPickup(Map<String, dynamic> pickupData) async {
+    try {
+      return await post('/scrap-pickup', body: pickupData);
+    } catch (e) {
+      await _storeInAWS('scrap', pickupData);
+      return {'success': true, 'id': 'AWS_S3_${DateTime.now().millisecondsSinceEpoch}', 'status': 'PENDING_SYNC'};
+    }
+  }
+
+  Future<List<dynamic>> getUserScrapPickups({String? status}) async {
+    final response = await get('/scrap/me?status=$status');
+    return response['pickups'] ?? [];
+  }
+
+  // === PROVIDER MANAGEMENT (AWS DYNAMODB) ===
+
+  Future<Map<String, dynamic>> createProvider(Map<String, dynamic> data) async {
+    return post('/provider/create', body: data);
+  }
+
+  Future<List<dynamic>> fetchProviders(String serviceType) async {
+    final response = await get('/providers?service_type=$serviceType');
+    return response['providers'] ?? [];
+  }
+
+  Future<Map<String, dynamic>> getProviderProfile() async {
+    return get('/provider/me');
+  }
+
+  Future<Map<String, dynamic>> getProviderBookings({String? status, String? type}) async {
+    return get('/provider/bookings?status=$status&type=$type');
+  }
+
+  Future<Map<String, dynamic>> updateProviderStatus(String status) async {
+    return put('/provider/status', body: {'status': status});
+  }
+
+  // === ADMIN MANAGEMENT (AWS DYNAMODB AGGREGATIONS) ===
+
+  Future<Map<String, dynamic>> fetchAdminStats() async {
+    return get('/admin/stats');
+  }
+
+  Future<List<dynamic>> fetchAdminUsers() async {
+    final response = await get('/admin/users');
+    return response['users'] ?? [];
+  }
+
+  Future<List<dynamic>> fetchAdminProviders() async {
+    final response = await get('/admin/providers');
+    return response['providers'] ?? [];
+  }
+
+  // === SERVICE LISTING (S3 MASTER DATA) ===
   
-  Future<Map<String, dynamic>> getProviderBookings({String? status, String? type}) async => {'bookings': []};
-  
-  Future<Map<String, dynamic>> updateProviderStatus(String status) async => {'success': true};
+  Future<List<dynamic>> getServices({String? category}) async {
+    final data = await fetchMasterData('services');
+    if (category != null) {
+      return data.where((s) => s['category'] == category).toList();
+    }
+    return data;
+  }
+
+  Future<List<dynamic>> getServicesByCategory(String category) async {
+    return getServices(category: category);
+  }
+
+  Future<List<dynamic>> getCategories() async {
+    try {
+      return await fetchMasterData('categories');
+    } catch (e) {
+      return ['Home Cleaning', 'Vehicle Care', 'Laundry', 'Scrap & Recycling'];
+    }
+  }
+
+  Future<bool> checkServiceAvailability(String pincode) async {
+    return pincode.startsWith('560'); // Bangalore default
+  }
 }
 
 class ApiException implements Exception {

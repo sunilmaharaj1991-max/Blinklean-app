@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/service_model.dart';
 import '../core/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'service_detail_screen.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/glass_card.dart';
 
 class AllServicesScreen extends StatefulWidget {
   final String? category;
@@ -19,17 +22,17 @@ class _AllServicesScreenState extends State<AllServicesScreen>
   int _selectedFilter = 0;
 
   final List<Map<String, dynamic>> _filters = [
-    {'name': 'All', 'icon': Icons.apps_rounded, 'color': Color(0xFF7C4DFF)},
-    {'name': 'Home', 'icon': Icons.home_rounded, 'color': Color(0xFF00C853)},
+    {'name': 'All', 'icon': Icons.apps_rounded, 'color': AppTheme.primaryColor},
+    {'name': 'Home', 'icon': Icons.home_rounded, 'color': AppTheme.primaryColor},
     {
       'name': 'Vehicle',
       'icon': Icons.directions_car_rounded,
-      'color': Color(0xFF2979FF),
+      'color': AppTheme.secondaryColor,
     },
     {
       'name': 'Laundry',
       'icon': Icons.local_laundry_service_rounded,
-      'color': Color(0xFFFF6D00),
+      'color': AppTheme.secondaryColor,
     },
   ];
 
@@ -42,6 +45,14 @@ class _AllServicesScreenState extends State<AllServicesScreen>
         setState(() => _selectedFilter = _tabController.index);
       }
     });
+
+    if (widget.category != null) {
+      final index = _filters.indexWhere((f) => f['name'] == widget.category);
+      if (index != -1) {
+        _selectedFilter = index;
+        _tabController.index = index;
+      }
+    }
   }
 
   @override
@@ -69,208 +80,345 @@ class _AllServicesScreenState extends State<AllServicesScreen>
     final selectedColor = _filters[_selectedFilter]['color'] as Color;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Premium Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [selectedColor.withValues(alpha: 0.1), Colors.white],
+      body: Stack(
+        children: [
+          const PremiumBackground(),
+          SafeArea(
+            child: Column(
+              children: [
+                // Glass Header
+                _buildHeader(selectedColor, services.length),
+
+                // Filters
+                _buildFilters(),
+
+                // Services List
+                Expanded(
+                  child: services.isEmpty
+                      ? _buildEmptyState(selectedColor)
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                          itemCount: services.length,
+                          physics: const BouncingScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            return _buildServiceCard(services[index], selectedColor)
+                                .animate(delay: (50 * index).ms)
+                                .fadeIn(duration: 500.ms)
+                                .slideY(begin: 0.1, curve: Curves.easeOutCirc);
+                          },
+                        ),
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(Color accentColor, int count) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: GlassCard(
+              padding: EdgeInsets.zero,
+              width: 50,
+              height: 50,
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Colors.white,
+                size: 24,
               ),
-              child: Column(
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Our Services',
+                  style: GoogleFonts.outfit(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Professional help at your doorstep',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GlassCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: accentColor,
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$count',
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Container(
+      height: 60,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.4),
+        indicatorColor: Colors.transparent,
+        dividerColor: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        tabAlignment: TabAlignment.start,
+        tabs: _filters.map((filter) {
+          final isSelected = _filters.indexOf(filter) == _selectedFilter;
+          final color = filter['color'] as Color;
+          return AnimatedContainer(
+            duration: 400.ms,
+            curve: Curves.easeOutQuint,
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? LinearGradient(
+                      colors: [color, color.withValues(alpha: 0.7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isSelected ? null : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                width: 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: selectedColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.arrow_back_rounded,
-                            color: selectedColor,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Our Services',
-                              style: GoogleFonts.outfit(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Professional home services at your doorstep',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: AppTheme.subtleColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selectedColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.local_fire_department_rounded,
-                              color: selectedColor,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${services.length}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: selectedColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  Icon(
+                    filter['icon'] as IconData,
+                    size: 18,
+                    color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    filter['name'] as String,
+                    style: GoogleFonts.outfit(
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
             ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-            // Tab Bar
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                labelColor: Colors.white,
-                unselectedLabelColor: AppTheme.subtleColor,
-                indicatorColor: Colors.transparent,
-                dividerColor: Colors.transparent,
-                labelStyle: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-                unselectedLabelStyle: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                tabAlignment: TabAlignment.start,
-                tabs: _filters.map((filter) {
-                  final isSelected =
-                      _filters.indexOf(filter) == _selectedFilter;
-                  final color = filter['color'] as Color;
-                  return Container(
-                    margin: const EdgeInsets.only(right: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
+  Widget _buildServiceCard(ServiceModel service, Color accentColor) {
+    return GlassCard(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (c) => ServiceDetailScreen(service: service),
+          ),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? LinearGradient(
-                              colors: [color, color.withValues(alpha: 0.8)],
-                            )
-                          : null,
-                      color: isSelected ? null : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.4),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          filter['icon'] as IconData,
-                          size: 18,
-                          color: isSelected
-                              ? Colors.white
-                              : AppTheme.subtleColor,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(filter['name'] as String),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            // Services List
-            Expanded(
-              child: services.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: selectedColor.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.construction_rounded,
-                              size: 48,
-                              color: selectedColor,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Coming soon!',
-                            style: GoogleFonts.outfit(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'This service will be available shortly',
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              color: AppTheme.subtleColor,
-                            ),
-                          ),
+                      gradient: LinearGradient(
+                        colors: [
+                          accentColor.withValues(alpha: 0.2),
+                          accentColor.withValues(alpha: 0.05),
                         ],
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: services.length,
-                      itemBuilder: (context, index) {
-                        final service = services[index];
-                        return _buildServiceCard(service, selectedColor);
-                      },
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: accentColor.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
                     ),
+                    child: service.buildIcon(color: Colors.white, size: 36),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                service.name,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _getCategoryColor(service.category).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _getCategoryColor(service.category).withValues(alpha: 0.3),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Text(
+                                service.category.split(' ').first.toUpperCase(),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: _getCategoryColor(service.category),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          service.shortDescription,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'EXCLUSIVE PRICE',
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          color: Colors.white.withValues(alpha: 0.3),
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      Text(
+                        service.formattedPrice,
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [accentColor, accentColor.withValues(alpha: 0.8)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withValues(alpha: 0.4),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'BOOK NOW',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                            color: Colors.white,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -278,246 +426,40 @@ class _AllServicesScreenState extends State<AllServicesScreen>
     );
   }
 
-  Widget _buildServiceCard(ServiceModel service, Color accentColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (c) => ServiceDetailScreen(service: service),
+  Widget _buildEmptyState(Color accentColor) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GlassCard(
+            width: 100,
+            height: 100,
+            padding: EdgeInsets.zero,
+            child: Icon(
+              Icons.auto_mode_rounded,
+              size: 40,
+              color: accentColor,
+            ),
+          ).animate(onPlay: (c) => c.repeat()).rotate(duration: 3.seconds),
+          const SizedBox(height: 24),
+          Text(
+            'Expanding Curated List',
+            style: GoogleFonts.outfit(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
             ),
           ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            accentColor.withValues(alpha: 0.1),
-                            accentColor.withValues(alpha: 0.05),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: service.buildIcon(color: accentColor, size: 32),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  service.name,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getCategoryColor(
-                                    service.category,
-                                  ).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  service.category.split(' ').first,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: _getCategoryColor(service.category),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            service.shortDescription,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              color: AppTheme.subtleColor,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF0F4F8),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.access_time_rounded,
-                                      size: 12,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      service.estimatedDuration,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 10,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF0F4F8),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.verified_rounded,
-                                      size: 12,
-                                      color: Colors.green.shade600,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Trained',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 10,
-                                        color: Colors.green.shade600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(24),
-                    bottomRight: Radius.circular(24),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Starting from',
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            color: AppTheme.subtleColor,
-                          ),
-                        ),
-                        Text(
-                          service.formattedPrice,
-                          style: GoogleFonts.outfit(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: accentColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            accentColor,
-                            accentColor.withValues(alpha: 0.8),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: accentColor.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Book Now',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            'Stay tuned for professional additions',
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.5),
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -525,11 +467,11 @@ class _AllServicesScreenState extends State<AllServicesScreen>
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Home Cleaning':
-        return const Color(0xFF00C853);
+        return AppTheme.primaryColor;
       case 'Vehicle Care':
-        return const Color(0xFF2979FF);
+        return AppTheme.secondaryColor;
       case 'Laundry':
-        return const Color(0xFFFF6D00);
+        return AppTheme.secondaryColor;
       default:
         return AppTheme.primaryColor;
     }

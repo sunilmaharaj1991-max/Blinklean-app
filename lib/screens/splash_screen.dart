@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
+import '../services/auth_service.dart';
+import 'login_screen.dart';
 import '../main.dart';
+import '../widgets/brand_logo.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -32,9 +35,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     await Future.delayed(const Duration(milliseconds: 2800));
     
     if (mounted) {
+      bool isSignedIn = false;
+      try {
+        final authService = AuthService();
+        final user = await authService.currentUser;
+        isSignedIn = user != null;
+      } catch (e) {
+        isSignedIn = false;
+      }
+
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, anim, _) => FadeTransition(opacity: anim, child: const MainEntry()),
+          pageBuilder: (_, anim, _) => FadeTransition(
+            opacity: anim, 
+            child: isSignedIn ? const MainEntry() : const LoginScreen()
+          ),
           transitionDuration: const Duration(milliseconds: 800),
         ),
       );
@@ -88,66 +103,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Animated Logo
-                Container(
-                  width: 140,
-                  height: 140,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                        blurRadius: 40,
-                        spreadRadius: 10,
-                      )
-                    ],
-                  ),
-                  child: Hero(
-                    tag: 'logo',
-                    child: Image.asset(
-                      'assets/images/logo_icon.png',
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.auto_awesome_rounded,
-                        size: 60,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                  ),
-                ).animate()
-                 .scale(begin: const Offset(0.5, 0.5), end: const Offset(1, 1), curve: Curves.elasticOut, duration: 1200.ms)
-                 .shimmer(delay: 1.seconds, duration: 2.seconds, color: AppTheme.primaryColor.withValues(alpha: 0.1)),
-
-                const SizedBox(height: 40),
-
-                // Branded Text
-                Text(
-                  "BlinKlean",
-                  style: GoogleFonts.outfit(
-                    fontSize: 44,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -1,
-                  ),
-                ).animate()
-                 .fadeIn(delay: 400.ms, duration: 800.ms)
-                 .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic),
-
-                const SizedBox(height: 8),
-
-                // Neon Tagline
-                Text(
-                  "India's 1st AI Powered QuickClean",
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.secondaryColor,
-                    letterSpacing: 1.5,
-                  ),
-                ).animate()
-                 .fadeIn(delay: 800.ms, duration: 800.ms)
-                 .shimmer(delay: 2.seconds, duration: 2.seconds),
+                // Animated Custom Logo (Replacing Image.asset)
+                const BrandLogo(size: 140),
               ],
             ),
 

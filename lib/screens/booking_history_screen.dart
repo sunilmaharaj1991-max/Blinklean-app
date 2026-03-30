@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/app_theme.dart';
+import '../services/api_service.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/glass_card.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
@@ -10,442 +14,165 @@ class BookingHistoryScreen extends StatefulWidget {
 }
 
 class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
-  // Mock data for design preview
-  final List<Map<String, dynamic>> _mockBookings = [
-    {
-      'service': '2BHK Deep Cleaning',
-      'icon': Icons.home_rounded,
-      'date': 'March 20, 2026',
-      'time': '10:00 AM',
-      'status': 'Completed',
-      'amount': '₹2,199',
-    },
-    {
-      'service': 'Car Waterless Wash',
-      'icon': Icons.directions_car_rounded,
-      'date': 'March 18, 2026',
-      'time': '02:30 PM',
-      'status': 'Completed',
-      'amount': '₹299',
-    },
-    {
-      'service': 'Sofa Cleaning',
-      'icon': Icons.chair_rounded,
-      'date': 'March 15, 2026',
-      'time': '11:00 AM',
-      'status': 'Completed',
-      'amount': '₹1,596',
-    },
-  ];
+  List<dynamic> _bookings = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBookings();
+  }
+
+  Future<void> _fetchBookings() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await apiService.getUserBookings();
+      if (!mounted) return;
+      setState(() {
+        _bookings = response['bookings'] ?? [];
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  double get _totalSpent {
+    double total = 0;
+    for (var b in _bookings) {
+      if (b['status'] == 'Completed') {
+        final amountText = b['amount']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0';
+        total += double.tryParse(amountText) ?? 0;
+      }
+    }
+    return total;
+  }
+
+  int get _completedCount => _bookings.where((b) => b['status'] == 'Completed').length;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
-      body: CustomScrollView(
-        slivers: [
-          // Premium Header
-          SliverAppBar(
-            expandedHeight: 180,
-            floating: false,
-            pinned: true,
-            backgroundColor: AppTheme.primaryColor,
-            leading: Container(
-              margin: const EdgeInsets.all(8),
-              child: IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundColor: Colors.black26,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+              onPressed: () => Navigator.pop(context),
             ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.primaryColor,
-                      AppTheme.secondaryColor.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    // Decorative circles
-                    Positioned(
-                      top: -30,
-                      right: -30,
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 20,
-                      left: 20,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        ),
+        title: Text(
+          "BOOKING HISTORY",
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 2,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: PremiumBackground(
+        child: RefreshIndicator(
+          onRefresh: _fetchBookings,
+          backgroundColor: Colors.grey[900],
+          color: AppTheme.secondaryColor,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            slivers: [
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
+
+              // Stats Row
+              SliverToBoxAdapter(
+                child: _isLoading 
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
                         children: [
-                          Text(
-                            'Booking History',
-                            style: GoogleFonts.outfit(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Track your service history',
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
-                          ),
+                          _buildMiniStat('Total', _bookings.length.toString(), Icons.receipt_long_rounded, Colors.blueAccent),
+                          const SizedBox(width: 12),
+                          _buildMiniStat('Finished', _completedCount.toString(), Icons.verified_rounded, AppTheme.secondaryColor),
+                          const SizedBox(width: 12),
+                          _buildMiniStat('Spent', '₹${_totalSpent.toStringAsFixed(0)}', Icons.payments_rounded, Colors.orangeAccent),
                         ],
-                      ),
+                      ).animate().fadeIn().slideY(begin: 0.1),
                     ),
-                  ],
-                ),
               ),
-            ),
-          ),
 
-          // Stats Cards
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Total',
-                      '${_mockBookings.length}',
-                      Icons.receipt_long_rounded,
-                      const Color(0xFF00C853),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Completed',
-                      '${_mockBookings.length}',
-                      Icons.check_circle_rounded,
-                      const Color(0xFF2979FF),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Spent',
-                      '₹4,094',
-                      Icons.currency_rupee_rounded,
-                      const Color(0xFFFF6B35),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
 
-          // Section Title
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.history_rounded,
-                      color: AppTheme.primaryColor,
-                      size: 18,
-                    ),
+              // Bookings List
+              if (_isLoading)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppTheme.secondaryColor),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Recent Bookings',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-          // Bookings List
-          _mockBookings.isEmpty
-              ? SliverFillRemaining(child: _buildEmptyState())
-              : SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                )
+              else if (_errorMessage != null)
+                SliverFillRemaining(child: _buildErrorState())
+              else if (_bookings.isEmpty)
+                SliverFillRemaining(child: _buildEmptyState())
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) =>
-                          _buildBookingCard(_mockBookings[index], index),
-                      childCount: _mockBookings.length,
+                      (context, index) {
+                        final booking = _bookings[index];
+                        return _buildBookingCard(booking, index);
+                      },
+                      childCount: _bookings.length,
                     ),
                   ),
                 ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 10,
-              color: AppTheme.subtleColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBookingCard(Map<String, dynamic> booking, int index) {
-    final statusColor = _getStatusColor(booking['status']);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryColor.withValues(alpha: 0.1),
-                            AppTheme.secondaryColor.withValues(alpha: 0.1),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(
-                        booking['icon'] as IconData,
-                        color: AppTheme.primaryColor,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            booking['service'] as String,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today_rounded,
-                                size: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                booking['date'] as String,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: AppTheme.subtleColor,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Icon(
-                                Icons.access_time_rounded,
-                                size: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                booking['time'] as String,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: AppTheme.subtleColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          booking['amount'] as String,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: AppTheme.primaryColor,
-                          ),
-                        ),
-                        Container(
-                          margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            booking['status'] as String,
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: statusColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Bottom action bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
+  Widget _buildMiniStat(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        color: Colors.white.withValues(alpha: 0.05),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
-            child: Row(
-              children: [
-                _buildActionButton(Icons.replay_rounded, 'Re-book', () {}),
-                const SizedBox(width: 12),
-                _buildActionButton(Icons.rate_review_rounded, 'Rate', () {}),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {},
-                  child: Text(
-                    'View Details',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: AppTheme.subtleColor),
-            const SizedBox(width: 6),
             Text(
-              label,
+              label.toUpperCase(),
               style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.subtleColor,
+                fontSize: 9,
+                color: Colors.white30,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
               ),
             ),
           ],
@@ -454,74 +181,189 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
     );
   }
 
+  Widget _buildBookingCard(Map<String, dynamic> booking, int index) {
+    final status = booking['status']?.toString() ?? 'Pending';
+    final statusColor = _getStatusColor(status);
+    final serviceName = booking['service']?.toString() ?? 'Cleaning Service';
+    final amount = booking['amount']?.toString() ?? '₹0';
+    final dateStr = booking['date']?.toString() ?? 'N/A';
+    final timeStr = booking['time']?.toString() ?? 'N/A';
+
+    return GlassCard(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(_getServiceIcon(serviceName), color: AppTheme.secondaryColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      serviceName,
+                      style: GoogleFonts.outfit(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today_rounded, size: 12, color: Colors.white30),
+                        const SizedBox(width: 6),
+                        Text(dateStr, style: GoogleFonts.outfit(fontSize: 12, color: Colors.white60)),
+                        const SizedBox(width: 12),
+                        Icon(Icons.access_time_rounded, size: 12, color: Colors.white30),
+                        const SizedBox(width: 6),
+                        Text(timeStr, style: GoogleFonts.outfit(fontSize: 12, color: Colors.white60)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: statusColor,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              Text(
+                amount.contains('₹') ? amount : '₹$amount',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate(delay: (100 * index).ms).fadeIn().slideX(begin: 0.1);
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.calendar_today_rounded,
-              size: 60,
-              color: AppTheme.primaryColor,
-            ),
-          ),
+          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.white10),
           const SizedBox(height: 24),
           Text(
             'No Bookings Yet',
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+            style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Your service history will appear here\nonce you book your first service.',
+            'Your service history will appear here\nonce you make your first booking.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              color: AppTheme.subtleColor,
-            ),
+            style: GoogleFonts.outfit(fontSize: 15, color: Colors.white30),
           ),
-          const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
-              ),
-              borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 40),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.secondaryColor,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            child: Text(
-              'Book a Service',
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+            child: Text('EXPLORE SERVICES', style: GoogleFonts.outfit(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 13, letterSpacing: 1)),
           ),
         ],
+      ),
+    ).animate().fadeIn();
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.redAccent),
+            const SizedBox(height: 24),
+            Text(
+              'Connection Error',
+              style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage ?? 'Unable to sync with AWS',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(color: Colors.white38),
+            ),
+            const SizedBox(height: 32),
+            TextButton(
+              onPressed: _fetchBookings,
+              child: Text('RETRY CONNECTION', style: GoogleFonts.outfit(color: AppTheme.secondaryColor, fontWeight: FontWeight.w900, letterSpacing: 1)),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  IconData _getServiceIcon(String serviceName) {
+    serviceName = serviceName.toLowerCase();
+    if (serviceName.contains('car') || serviceName.contains('vehicle')) {
+      return Icons.directions_car_filled_rounded;
+    }
+    if (serviceName.contains('cleaning')) {
+      return Icons.cleaning_services_rounded;
+    }
+    if (serviceName.contains('laundry')) {
+      return Icons.local_laundry_service_rounded;
+    }
+    if (serviceName.contains('scrap') || serviceName.contains('recycling')) {
+      return Icons.recycling_rounded;
+    }
+    return Icons.miscellaneous_services_rounded;
+  }
+
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Completed':
-        return const Color(0xFF00C853);
-      case 'In Progress':
-        return const Color(0xFF2979FF);
-      case 'Pending':
-        return const Color(0xFFFF9800);
-      case 'Cancelled':
-        return const Color(0xFFFF5252);
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'finished':
+        return AppTheme.secondaryColor;
+      case 'in progress':
+      case 'active':
+        return Colors.blueAccent;
+      case 'pending':
+        return Colors.orangeAccent;
+      case 'cancelled':
+        return Colors.redAccent;
       default:
-        return Colors.grey;
+        return Colors.white24;
     }
   }
 }

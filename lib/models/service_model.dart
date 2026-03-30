@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class ServiceModel {
   final String id;
@@ -31,6 +32,39 @@ class ServiceModel {
     this.isActive = true,
   });
 
+  factory ServiceModel.fromMap(Map<String, dynamic> map) {
+    return ServiceModel(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      icon: _getIconData(map['iconName'] ?? ''),
+      imageUrl: map['imageUrl'] ?? '',
+      shortDescription: map['shortDescription'] ?? '',
+      fullDescription: map['fullDescription'] ?? '',
+      category: map['category'] ?? '',
+      startingPrice: (map['startingPrice'] ?? 0).toDouble(),
+      priceUnit: map['priceUnit'] ?? '',
+      estimatedDuration: map['estimatedDuration'] ?? '',
+      customerProvides: map['customerProvides'] ?? '',
+      whatsIncluded: List<String>.from(map['whatsIncluded'] ?? []),
+      isActive: map['isActive'] ?? true,
+    );
+  }
+
+  static IconData _getIconData(String name) {
+    switch (name.toLowerCase()) {
+      case 'home': return Icons.home_rounded;
+      case 'villa': return Icons.villa_rounded;
+      case 'kitchen': return Icons.kitchen_rounded;
+      case 'bathroom': return Icons.bathtub_rounded;
+      case 'car': return Icons.directions_car_rounded;
+      case 'bike': return Icons.two_wheeler_rounded;
+      case 'auto': return Icons.electric_rickshaw_rounded;
+      case 'cycle': return Icons.pedal_bike_rounded;
+      case 'laundry': return Icons.local_laundry_service_rounded;
+      default: return Icons.cleaning_services_rounded;
+    }
+  }
+
   String get formattedPrice {
     if (priceUnit.isNotEmpty) {
       return '₹${startingPrice.toInt()} $priceUnit';
@@ -49,6 +83,17 @@ class ServiceModel {
       );
     }
     return Icon(icon, color: color, size: size);
+  }
+
+  static Future<List<ServiceModel>> fetchAllServices() async {
+    try {
+      final List<dynamic> servicesJson = await apiService.getServices();
+      if (servicesJson.isEmpty) return getAllServices(); // Fallback
+      return servicesJson.map((s) => ServiceModel.fromMap(s as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('Error fetching services from AWS: $e');
+      return getAllServices(); // Fallback
+    }
   }
 
   static List<ServiceModel> getAllServices() {

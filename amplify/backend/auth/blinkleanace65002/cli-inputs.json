@@ -16,9 +16,14 @@
     "smsVerificationMessage": "Your verification code is {####}",
     "emailVerificationSubject": "Your verification code",
     "emailVerificationMessage": "Your verification code is {####}",
-    "defaultPasswordPolicy": false,
-    "passwordPolicyMinLength": 8,
-    "passwordPolicyCharacters": [],
+    "defaultPasswordPolicy": true,
+    "passwordPolicyMinLength": "10",
+    "passwordPolicyCharacters": [
+      "Requires Lowercase",
+      "Requires Uppercase",
+      "Requires Numbers",
+      "Requires Symbols"
+    ],
     "requiredAttributes": [
       "email"
     ],
@@ -34,7 +39,6 @@
     ],
     "userpoolClientReadAttributes": [
       "address",
-      "email",
       "given_name",
       "name",
       "phone_number"

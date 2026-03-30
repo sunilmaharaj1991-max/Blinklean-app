@@ -13,9 +13,6 @@
       "AuthTriggerTemplateURL": "https://s3.amazonaws.com/amplify-blinklean-dev-4c300-deployment/amplify-cfn-templates/auth/auth-trigger-cloudformation-template.json"
     },
     "categories": {
-      "auth": {
-        "blinkleanace65002": {}
-      },
       "storage": {
         "blinkleana7418c5b": {
           "bucketName": "unique-blinklean-storage",
@@ -41,7 +38,23 @@
         "blinkleanace65002VerifyAuthChallengeResponse": {
           "deploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
           "s3Key": "amplify-builds/blinkleanace65002VerifyAuthChallengeResponse-61796e376147344e4c69-build.zip"
+        },
+        "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge": {
+          "deploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
+          "s3Key": "amplify-builds/blinkleanf9a2cc33f9a2cc33CreateAuthChallenge-343161626659714c5674-build.zip"
+        },
+        "blinkleanf9a2cc33f9a2cc33DefineAuthChallenge": {
+          "deploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
+          "s3Key": "amplify-builds/blinkleanf9a2cc33f9a2cc33DefineAuthChallenge-57455469736a33516d2f-build.zip"
+        },
+        "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse": {
+          "deploymentBucketName": "amplify-blinklean-dev-4c300-deployment",
+          "s3Key": "amplify-builds/blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse-63456d3343434662452f-build.zip"
         }
+      },
+      "auth": {
+        "blinkleanf9a2cc33f9a2cc33": {},
+        "userPoolGroups": {}
       }
     }
   }

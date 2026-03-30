@@ -1,0 +1,16 @@
+{
+  "trigger": true,
+  "modules": [
+    "boilerplate-verify"
+  ],
+  "parentResource": "blinkleanf9a2cc33f9a2cc33",
+  "functionName": "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse",
+  "resourceName": "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse",
+  "parentStack": "auth",
+  "triggerEnvs": "[]",
+  "triggerDir": "C:\\snapshot\\amplify-cli\\build\\node_modules\\@aws-amplify\\amplify-category-auth\\provider-utils\\awscloudformation\\triggers\\VerifyAuthChallengeResponse",
+  "triggerTemplate": "VerifyAuthChallengeResponse.json.ejs",
+  "triggerEventPath": "VerifyAuthChallengeResponse.event.json",
+  "roleName": "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse",
+  "skipEdit": true
+}

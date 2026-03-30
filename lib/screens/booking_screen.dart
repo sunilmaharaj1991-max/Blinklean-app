@@ -7,6 +7,8 @@ import '../models/service_model.dart';
 import '../services/payment_service.dart';
 import '../services/api_service.dart';
 import '../core/app_theme.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/glass_card.dart';
 
 class BookingScreen extends StatefulWidget {
   final ServiceModel service;
@@ -55,48 +57,7 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   void _handleSuccess(PaymentSuccessResponse response) async {
-    final bookingData = {
-      'service': {
-        'serviceId': widget.service.id,
-        'name': widget.service.name,
-        'category': widget.service.category,
-        'icon': widget.service.icon.codePoint.toString(),
-      },
-      'address': {
-        'street': _addressController.text,
-        'area': '',
-        'city': 'Bengaluru',
-      },
-      'schedule': {
-        'date': _selectedDate?.toIso8601String().split('T')[0] ?? '',
-        'time': _selectedTime?.format(context) ?? '',
-      },
-      'pricing': {
-        'basePrice': widget.service.startingPrice,
-        'totalPrice': widget.service.startingPrice,
-      },
-      'payment': {
-        'method': 'online',
-        'status': 'paid',
-        'transactionId': response.paymentId ?? '',
-      },
-    };
-
-    try {
-      await _api.createBooking(bookingData);
-    } catch (e) {
-      debugPrint('Booking API error: $e');
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Booking Confirmed Successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.popUntil(context, (route) => route.isFirst);
-    }
+    _processBooking(response.paymentId ?? '');
   }
 
   void _handleFailure(PaymentFailureResponse response) {
@@ -133,15 +94,7 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    // _paymentService.openCheckout(
-    //   amount: widget.service.startingPrice,
-    //   contact: _phoneController.text,
-    //   email: _emailController.text,
-    //   description: 'Booking for ${widget.service.name}',
-    // );
-    
-    // Simulating Payment Success for testing to store data in MongoDB directly
-    _processBooking('mock_transaction_123');
+    _processBooking('mock_transaction_${DateTime.now().millisecondsSinceEpoch}');
   }
 
   void _processBooking(String transactionId) async {
@@ -198,277 +151,183 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAF9),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/images/logo_icon.png',
-              width: 28,
-              height: 28,
-              errorBuilder: (c, e, s) =>
-                  Icon(Icons.bolt_rounded, color: AppTheme.primaryColor),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundColor: Colors.black26,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+              onPressed: () => Navigator.pop(context),
             ),
-            const SizedBox(width: 8),
-            Text(
-              'BlinKlean',
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
+          ),
+        ),
+        title: Text(
+          "SECURE BOOKING",
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 2,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: AppTheme.textColor,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primaryColor,
-                    AppTheme.primaryColor.withValues(alpha: 0.8),
+      body: PremiumBackground(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 120, 24, 150),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Service Summary Card
+              GlassCard(
+                padding: const EdgeInsets.all(24),
+                color: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: widget.service.buildIcon(color: AppTheme.secondaryColor, size: 32),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.service.name,
+                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'PREMIUM SERVICE',
+                            style: GoogleFonts.outfit(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Row(
+              ).animate().fadeIn().slideY(begin: 0.1),
+
+              const SizedBox(height: 40),
+              _buildSectionHeader('PERSONAL DETAILS'),
+              const SizedBox(height: 20),
+              _buildInputField(_nameController, 'FULL NAME', Icons.person_rounded),
+              const SizedBox(height: 16),
+              _buildInputField(_phoneController, 'PHONE NUMBER', Icons.phone_android_rounded, keyboardType: TextInputType.phone),
+              const SizedBox(height: 16),
+              _buildInputField(_addressController, 'SERVICE ADDRESS', Icons.location_on_rounded, maxLines: 2),
+
+              const SizedBox(height: 40),
+              _buildSectionHeader('SCHEDULE APPOINTMENT'),
+              const SizedBox(height: 20),
+              Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: widget.service.buildIcon(
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-                  const SizedBox(width: 20),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.service.name,
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.2),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Order Amount',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          '₹${widget.service.startingPrice.toInt()}',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ).animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.8, 0.8)),
-                      ],
+                    child: _buildPickerCard(
+                      Icons.calendar_today_rounded,
+                      _selectedDate == null ? 'SELECT DATE' : '${_selectedDate!.toLocal()}'.split(' ')[0],
+                      () async {
+                        final d = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 30)),
+                        );
+                        if (d != null) setState(() => _selectedDate = d);
+                      },
                     ),
                   ),
-                ],
-              ),
-            ).animate().fadeIn().slideY(begin: 0.2),
-
-            const SizedBox(height: 40),
-            _buildSectionHeader('Personal Details').animate().fadeIn(delay: 300.ms),
-            const SizedBox(height: 20),
-            _buildInputField(
-              _nameController,
-              'Full Name',
-              Icons.person_outline_rounded,
-            ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
-            const SizedBox(height: 16),
-            _buildInputField(
-              _phoneController,
-              'Phone Number',
-              Icons.phone_android_rounded,
-              keyboardType: TextInputType.phone,
-            ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
-            const SizedBox(height: 16),
-            const SizedBox(height: 16),
-            _buildInputField(
-              _addressController,
-              'Service Address',
-              Icons.location_on_outlined,
-              maxLines: 2,
-            ),
-
-            const SizedBox(height: 40),
-            _buildSectionHeader('Schedule Appointment'),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPickerCard(
-                    Icons.calendar_today_rounded,
-                    _selectedDate == null
-                        ? 'Select Date'
-                        : '${_selectedDate!.toLocal()}'.split(' ')[0],
-                    () async {
-                      final d = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 30)),
-                      );
-                      if (d != null) setState(() => _selectedDate = d);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildPickerCard(
-                    Icons.access_time_rounded,
-                    _selectedTime == null
-                        ? 'Select Time'
-                        : _selectedTime!.format(context),
-                    () async {
-                      final t = await showTimePicker(
-                        context: context,
-                        initialTime: const TimeOfDay(hour: 10, minute: 0),
-                      );
-                      if (t != null) setState(() => _selectedTime = t);
-                    },
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 40),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline_rounded, color: Colors.orange, size: 20),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "SERVICE REQUIREMENTS",
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.orange[800],
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.service.customerProvides,
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            color: AppTheme.textColor,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
+                    child: _buildPickerCard(
+                      Icons.access_time_rounded,
+                      _selectedTime == null ? 'SELECT TIME' : _selectedTime!.format(context),
+                      () async {
+                        final t = await showTimePicker(
+                          context: context,
+                          initialTime: const TimeOfDay(hour: 10, minute: 0),
+                        );
+                        if (t != null) setState(() => _selectedTime = t);
+                      },
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 120),
-          ],
-        ),
-      ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 20,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total Payable',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: AppTheme.subtleColor,
-                  ),
-                ),
-                Text(
-                  '₹${widget.service.startingPrice.toInt()}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  elevation: 8,
-                  shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
-                ),
-                onPressed: _initiatePayment,
-                child: Text(
-                  'Confirm & Pay',
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+
+              const SizedBox(height: 40),
+              // Requirement Info
+              GlassCard(
+                padding: const EdgeInsets.all(20),
+                color: Colors.orangeAccent.withValues(alpha: 0.05),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, color: Colors.orangeAccent, size: 20),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("SERVICE REQUIREMENTS", style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.orangeAccent, letterSpacing: 1)),
+                          const SizedBox(height: 4),
+                          Text(widget.service.customerProvides, style: GoogleFonts.outfit(fontSize: 13, color: Colors.white70, height: 1.3)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+      bottomSheet: _buildBottomBar(),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 1),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('TOTAL PAYABLE', style: GoogleFonts.outfit(fontSize: 10, color: Colors.white30, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+              Text('₹${widget.service.startingPrice.toInt()}', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            height: 64,
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: _initiatePayment,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+              child: Text('CONFIRM & PAY SECURELY', style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -477,79 +336,48 @@ class _BookingScreenState extends State<BookingScreen> {
     return Text(
       title,
       style: GoogleFonts.outfit(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        letterSpacing: -0.5,
+        fontSize: 12,
+        fontWeight: FontWeight.w900,
+        color: Colors.white24,
+        letterSpacing: 2,
       ),
     );
   }
 
-  Widget _buildInputField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.outfit(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: AppTheme.subtleColor,
-            letterSpacing: 1,
-          ),
+  Widget _buildInputField(TextEditingController controller, String label, IconData icon, {TextInputType? keyboardType, int maxLines = 1}) {
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.white.withValues(alpha: 0.03),
+      borderRadius: 20,
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          icon: Icon(icon, color: AppTheme.secondaryColor, size: 20),
+          hintText: label,
+          hintStyle: GoogleFonts.outfit(color: Colors.white24, fontSize: 13, fontWeight: FontWeight.w700),
+          border: InputBorder.none,
         ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 20),
-            filled: true,
-            fillColor: Colors.white,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide(color: Colors.grey.shade100),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: const BorderSide(
-                color: AppTheme.primaryColor,
-                width: 2,
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildPickerCard(IconData icon, String label, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      child: Container(
+      child: GlassCard(
         padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade100),
-        ),
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: 20,
         child: Column(
           children: [
-            Icon(icon, color: AppTheme.primaryColor, size: 24),
+            Icon(icon, color: AppTheme.secondaryColor, size: 24),
             const SizedBox(height: 8),
             Text(
               label,
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textColor,
-              ),
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w800, color: Colors.white70, fontSize: 12),
             ),
           ],
         ),

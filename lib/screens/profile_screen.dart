@@ -1,13 +1,16 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import '../core/app_theme.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/brand_logo.dart';
 import 'admin/admin_navigation_screen.dart';
 import 'provider/partner_navigation_screen.dart';
 import 'booking_history_screen.dart';
-
-import 'package:amplify_flutter/amplify_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -44,399 +47,162 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Profile Header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF009543), Color(0xFF00ADEF)],
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(40),
-                    bottomRight: Radius.circular(40),
-                  ),
-                ),
-                child: Column(
+      body: PremiumBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              children: [
+                // Premium Profile Header
+                _buildModernHeader()
+                    .animate()
+                    .fadeIn(duration: 600.ms)
+                    .slideY(begin: -0.1, end: 0),
+
+                const SizedBox(height: 24),
+
+                // Quick Stats Section (Modernized)
+                _buildQuickStats()
+                    .animate()
+                    .fadeIn(delay: 200.ms)
+                    .slideX(begin: 0.1, end: 0),
+
+                const SizedBox(height: 32),
+
+                // Account Section
+                _buildModernSection(
+                  'Account Settings',
+                  [
+                    _buildModernMenuItem(
+                      Icons.history_rounded,
+                      'Booking History',
+                      'View your past sessions',
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (c) => const BookingHistoryScreen()),
+                      ),
+                    ),
+                    _buildModernMenuItem(
+                      Icons.location_on_outlined,
+                      'My Addresses',
+                      'Delivery locations',
+                      () {},
+                    ),
+                    _buildModernMenuItem(
+                      Icons.logout_rounded,
+                      'Sign Out',
+                      'Securely log out',
+                      _handleSignOut,
+                      isDestructive: true,
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 400.ms),
+
+                const SizedBox(height: 24),
+
+                // Preferences Section
+                _buildModernSection(
+                  'Preferences',
+                  [
+                    _buildModernMenuItem(
+                      Icons.notifications_outlined,
+                      'Notifications',
+                      'Alerts & updates',
+                      () {},
+                    ),
+                    _buildModernMenuItem(
+                      Icons.dark_mode_rounded,
+                      'Appearance',
+                      'Glassmorphic theme',
+                      () {},
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 600.ms),
+
+                const SizedBox(height: 24),
+
+                // Dev Portal (if debug)
+                if (kDebugMode)
+                  _buildPortalSwitcher().animate().fadeIn(delay: 800.ms),
+
+                const SizedBox(height: 48),
+
+                // Footer Brand
+                Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'My Profile',
-                              style: GoogleFonts.outfit(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Manage your account',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(
-                            Icons.settings_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-                    // Profile Avatar
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.person_rounded,
-                          size: 50,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const BrandLogo(size: 32, iconOnly: true)
+                        .animate(onPlay: (controller) => controller.repeat())
+                        .shimmer(duration: 3.seconds, color: Colors.white24),
+                    const SizedBox(height: 12),
                     Text(
-                      _userName,
+                      'BLINKLEAN v1.0.0',
                       style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white24,
+                        letterSpacing: 2,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _userPhone.isNotEmpty ? _userPhone : 'Authenticated',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.5),
-                    const SizedBox(height: 24),
-                    // Developer Portal Switcher
-                    if (kDebugMode) _buildPortalSwitcher(),
-                    const SizedBox(height: 24),
-                    // Quick Actions
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickAction(
-                            Icons.history_rounded,
-                            'Bookings',
-                            '0',
-                          ).animate().fadeIn(delay: 600.ms).slideX(begin: -0.2),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAction(
-                            Icons.favorite_rounded,
-                            'Favorites',
-                            '0',
-                          ).animate().fadeIn(delay: 700.ms).slideX(begin: 0),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAction(
-                            Icons.location_on_rounded,
-                            'Addresses',
-                            '0',
-                          ).animate().fadeIn(delay: 800.ms).slideX(begin: 0.2),
-                        ),
-                      ],
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Menu Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMenuSection('Account', [
-                      _buildMenuItem(
-                        Icons.history_rounded,
-                        'Booking History',
-                        'View your past bookings',
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (c) => const BookingHistoryScreen(),
-                          ),
-                        ),
-                      ),
-                      _buildMenuItem(
-                        Icons.location_on_outlined,
-                        'My Addresses',
-                        'Manage delivery addresses',
-                        () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Address management coming soon!')),
-                          );
-                        },
-                      ),
-                      _buildMenuItem(
-                        Icons.payment_rounded,
-                        'Payment Methods',
-                        'Add or remove payment options',
-                        () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Payments are handled during service.')),
-                          );
-                        },
-                      ),
-                      _buildMenuItem(
-                        Icons.logout_rounded,
-                        'Sign Out',
-                        'Securely log out of your account',
-                        () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (c) => AlertDialog(
-                              title: const Text('Sign Out'),
-                              content: const Text('Are you sure you want to log out?'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Logout')),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            await Amplify.Auth.signOut();
-                          }
-                        },
-                      ),
-                    ]),
-                    const SizedBox(height: 20),
-                    _buildMenuSection('Preferences', [
-                      _buildMenuItem(
-                        Icons.notifications_outlined,
-                        'Notifications',
-                        'Manage notification settings',
-                        () {},
-                      ),
-                      _buildMenuItem(
-                        Icons.language_rounded,
-                        'Language',
-                        'English',
-                        () {},
-                      ),
-                      _buildMenuItem(
-                        Icons.dark_mode_rounded,
-                        'Dark Mode',
-                        'System default',
-                        () {},
-                      ),
-                    ]),
-                    const SizedBox(height: 20),
-                    _buildMenuSection('Support', [
-                      _buildMenuItem(
-                        Icons.help_outline_rounded,
-                        'Help & FAQ',
-                        'Get help with your orders',
-                        () {
-                          showAboutDialog(
-                            context: context,
-                            applicationName: 'BlinKlean',
-                            applicationVersion: '1.0.0',
-                            children: [
-                              const Text('For help, please contact support@blinklean.com'),
-                            ],
-                          );
-                        },
-                      ),
-                      _buildMenuItem(
-                        Icons.chat_rounded,
-                        'Contact Us',
-                        'Reach out to our team',
-                        () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('WhatsApp Support: +91 999 999 9999')),
-                          );
-                        },
-                      ),
-                      _buildMenuItem(
-                        Icons.info_outline_rounded,
-                        'About BlinKlean',
-                        'Learn more about us',
-                        () {
-                           showModalBottomSheet(
-                             context: context,
-                             builder: (c) => Container(
-                               padding: const EdgeInsets.all(24),
-                               child: Column(
-                                 mainAxisSize: MainAxisSize.min,
-                                 children: [
-                                   Text('About BlinKlean', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-                                   const SizedBox(height: 12),
-                                   const Text('India\'s 1st AI Powered QuickClean residential and vehicle platform. We specialize in waterless detailing and normal home cleaning.'),
-                                 ],
-                               ),
-                             ),
-                           );
-                        },
-                      ),
-                    ]),
-                    const SizedBox(height: 24),
-
-                    // App Info
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 15,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      AppTheme.primaryColor,
-                                      AppTheme.secondaryColor,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Image.asset(
-                                  'assets/images/logo_icon.png',
-                                  width: 24,
-                                  height: 24,
-                                  color: Colors.white,
-                                  errorBuilder: (c, e, s) => const Icon(
-                                    Icons.bolt_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Image.asset(
-                                    'assets/images/logo_full.png',
-                                    height: 20,
-                                    errorBuilder: (c, e, s) => Text(
-                                      'BlinKlean',
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    'Version 1.0.0',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 11,
-                                      color: AppTheme.subtleColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'India\'s 1st AI Powered QuickClean Platform',
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              color: AppTheme.subtleColor,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              ),
-            ],
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildQuickAction(IconData icon, String label, String count) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(16),
-      ),
+  Widget _buildModernHeader() {
+    return GlassCard(
+      padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          Text(
-            count,
-            style: GoogleFonts.outfit(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 4),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 12, color: Colors.white70),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: GoogleFonts.outfit(fontSize: 10, color: Colors.white70),
+              // Avatar
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.primaryGradient,
+                ),
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.black45,
+                  child: Icon(Icons.person_rounded, size: 40, color: Colors.white.withValues(alpha: 0.8)),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _userName,
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _userPhone.isNotEmpty ? _userPhone : 'Premium Member',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Colors.white54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.edit_note_rounded, color: AppTheme.secondaryColor),
               ),
             ],
           ),
@@ -445,73 +211,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuSection(String title, List<Widget> items) {
+  Widget _buildQuickStats() {
+    return Row(
+      children: [
+        _buildStatItem('Bookings', '12', Icons.calendar_today_rounded),
+        const SizedBox(width: 12),
+        _buildStatItem('Saved', '4', Icons.favorite_border_rounded),
+        const SizedBox(width: 12),
+        _buildStatItem('Points', '450', Icons.stars_rounded),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Expanded(
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          children: [
+            Icon(icon, size: 16, color: AppTheme.secondaryColor.withValues(alpha: 0.7)),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 10,
+                color: Colors.white38,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernSection(String title, List<Widget> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          padding: const EdgeInsets.only(left: 8, bottom: 12),
           child: Text(
-            title,
+            title.toUpperCase(),
             style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.subtleColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Colors.white24,
+              letterSpacing: 2,
             ),
           ),
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 15,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
+        GlassCard(
+          padding: EdgeInsets.zero,
           child: Column(
-            children: items.asMap().entries.map((entry) {
-              final index = entry.key;
-              final item = entry.value;
-              return Column(
-                children: [
-                  item,
-                  if (index < items.length - 1)
-                    Divider(height: 1, indent: 70, color: Colors.grey.shade100),
-                ],
-              );
-            }).toList(),
+            children: items,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMenuItem(
+  Widget _buildModernMenuItem(
     IconData icon,
     String title,
     String subtitle,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    bool isDestructive = false,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  color: isDestructive 
+                      ? Colors.redAccent.withValues(alpha: 0.1) 
+                      : AppTheme.secondaryColor.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: AppTheme.primaryColor, size: 20),
+                child: Icon(
+                  icon, 
+                  color: isDestructive ? Colors.redAccent : AppTheme.secondaryColor, 
+                  size: 20
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -522,14 +318,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title,
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 15,
+                        color: isDestructive ? Colors.redAccent : Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                     Text(
                       subtitle,
                       style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: AppTheme.subtleColor,
+                        fontSize: 12,
+                        color: Colors.white38,
                       ),
                     ),
                   ],
@@ -537,8 +334,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.grey.shade400,
-                size: 24,
+                color: Colors.white10,
+                size: 20,
               ),
             ],
           ),
@@ -547,14 +344,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPortalSwitcher() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24),
+  Future<void> _handleSignOut() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: AlertDialog(
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: Colors.white10),
+          ),
+          title: Text(
+            'Sign Out',
+            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Are you sure you want to end your current session?',
+            style: GoogleFonts.outfit(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.white38)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(c, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text('Logout', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
+    );
+    if (confirm == true) {
+      await Amplify.Auth.signOut();
+    }
+  }
+
+  Widget _buildPortalSwitcher() {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      color: Colors.black54,
       child: Column(
         children: [
           Row(
@@ -562,58 +396,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Icon(Icons.developer_mode_rounded, color: Colors.orangeAccent, size: 14),
               const SizedBox(width: 8),
               Text(
-                'DEV PORTAL SWITCHER',
+                'DEV PORTAL',
                 style: GoogleFonts.outfit(
-                  color: Colors.white70,
+                  color: Colors.white38,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
+                  letterSpacing: 2,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             children: [
-              _buildPortalTab('Partner', Icons.handyman_rounded, Colors.greenAccent, () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const PartnerNavigationScreen()));
-              }),
-              const SizedBox(width: 8),
-              _buildPortalTab('Admin', Icons.shield_rounded, Colors.indigoAccent, () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const AdminNavigationScreen()));
-              }),
+              Expanded(
+                child: _buildPortalBtn('Partner', Colors.greenAccent, () {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const PartnerNavigationScreen()));
+                }),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildPortalBtn('Admin', Colors.indigoAccent, () {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const AdminNavigationScreen()));
+                }),
+              ),
             ],
           ),
         ],
       ),
-    ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack);
+    );
   }
 
-  Widget _buildPortalTab(String label, IconData icon, Color color, VoidCallback onTap) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: GoogleFonts.outfit(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ],
+  Widget _buildPortalBtn(String label, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: GoogleFonts.outfit(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
           ),
         ),
       ),

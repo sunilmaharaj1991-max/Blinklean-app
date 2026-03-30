@@ -1,10 +1,14 @@
-import 'package:flutter/foundation.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import '../services/auth_service.dart';
 import '../core/app_theme.dart';
+import '../widgets/brand_logo.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/glass_card.dart';
 
 enum AuthStatus { idle, loading, confirming }
 
@@ -48,23 +52,34 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isSignUp) {
         await _auth.registerWithPhone(
           phoneNumber: phone,
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          name: _nameController.text.trim(),
         );
-        _showSuccess("OTP sent to $phone. Please verify.");
-        setState(() => _status = AuthStatus.confirming);
+        _showSuccess("Welcome! Verification code sent to $phone.");
+        if (mounted) {
+          Navigator.pushNamed(context, '/verify-otp', arguments: {
+            'phoneNumber': phone,
+            'isSignUp': true,
+          });
+        }
       } else {
-        final result = await _auth.signInCustomer(phone, _passwordController.text.trim());
-        if (result?.nextStep.signInStep == AuthSignInStep.confirmSignInWithSmsMfaCode) {
-          setState(() => _status = AuthStatus.confirming);
+        final result = await _auth.signInCustomer(phone);
+            
+        if (result?.nextStep.signInStep == AuthSignInStep.confirmSignInWithCustomChallenge) {
+          _showSuccess("Check your mobile for verification code.");
+          if (mounted) {
+            Navigator.pushNamed(context, '/verify-otp', arguments: {
+              'phoneNumber': phone,
+              'isSignUp': false,
+            });
+          }
         } else if (result?.isSignedIn ?? false) {
-           // Handled by MainEntry switch
            Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
       }
+    } on UserNotFoundException {
+      _showError("Account not found. Please click 'Get Started' to sign up first.");
+      setState(() => _isSignUp = true);
     } catch (e) {
-      _showError(e.toString());
+      _showError("Authentication failed: ${e.toString()}");
     } finally {
       if (mounted && _status != AuthStatus.confirming) {
         setState(() => _status = AuthStatus.idle);
@@ -86,8 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
           _status = AuthStatus.idle;
         });
       } else {
-        // MFA verification
-        await Amplify.Auth.confirmSignIn(confirmationValue: _otpController.text.trim());
+        // MFA verification or Custom Challenge
+        await _auth.confirmSignInOTP(_otpController.text.trim());
       }
     } catch (e) {
       _showError(e.toString());
@@ -118,319 +133,235 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header with Animation
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 32),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(60),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 30,
-                    offset: const Offset(0, 15),
-                  )
-                ],
-              ),
+      body: PremiumBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                   Container(
-                    width: 60,
-                    height: 60,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                    ),
-                    child: Image.asset(
-                      'assets/images/logo_icon.png',
-                      color: Colors.white,
-                      errorBuilder: (_, _, _) => const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 30),
-                    ),
-                  ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack).rotate(begin: -0.1, end: 0),
-                  const SizedBox(height: 32),
+                  // 🏢 Branding Layer
+                  const BrandLogo(size: 80, iconOnly: true)
+                    .animate()
+                    .scale(duration: 800.ms, curve: Curves.easeOutBack)
+                    .rotate(begin: -0.1, end: 0)
+                    .shimmer(delay: 2.seconds),
+                  
+                  const SizedBox(height: 24),
+                  
                   Text(
-                    _status == AuthStatus.confirming ? "Verify Mobile" : (_isSignUp ? "Join BlinKlean" : "Welcome Back"),
+                    "BlinKlean",
                     style: GoogleFonts.outfit(
-                      fontSize: 36,
+                      fontSize: 42,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
-                      letterSpacing: -1,
+                      letterSpacing: -1.5,
                     ),
-                  ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
-                  const SizedBox(height: 8),
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+                  
                   Text(
-                    _status == AuthStatus.confirming 
-                      ? "Enter the 6-digit code sent to your mobile"
-                      : "India's first AI-powered premium vehicle & home care.",
+                    _isSignUp ? "Experience Premium Cleaning" : "Welcome Back",
                     style: GoogleFonts.outfit(
-                      fontSize: 14,
+                      fontSize: 16,
                       color: Colors.white60,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.5,
                     ),
-                  ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.2),
-                ],
-              ),
-            ),
+                  ).animate().fadeIn(delay: 400.ms),
 
-            const SizedBox(height: 32),
+                  const SizedBox(height: 48),
 
-            // Form Area
-            Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    if (_status != AuthStatus.confirming) ...[
-                      if (_isSignUp) 
-                        _buildTextField(
-                          controller: _nameController,
-                          label: "NAME",
-                          icon: Icons.person_outline_rounded,
-                          hint: "Your Full Name",
-                        ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
-                      const SizedBox(height: 24),
-                      if (_isSignUp) ...[
-                         _buildTextField(
-                          controller: _emailController,
-                          label: "EMAIL ADDRESS",
-                          icon: Icons.email_outlined,
-                          hint: "you@example.com",
-                          keyboardType: TextInputType.emailAddress,
-                        ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2),
-                        const SizedBox(height: 24),
-                      ],
-                      _buildTextField(
-                        controller: _phoneController,
-                        label: "PHONE NUMBER",
-                        icon: Icons.phone_android_rounded,
-                        hint: "9876543210",
-                        keyboardType: TextInputType.phone,
-                      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
-                      const SizedBox(height: 24),
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: "PASSWORD",
-                        icon: Icons.lock_outline_rounded,
-                        hint: "••••••••",
-                        isPassword: true,
-                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-                    ] else 
-                      Column(
+                  // 🧊 Frosted Form Container
+                  GlassCard(
+                    padding: const EdgeInsets.all(32),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
                         children: [
-                          _buildTextField(
-                            controller: _otpController,
-                            label: "OTP CODE",
-                            icon: Icons.security_rounded,
-                            hint: "123456",
-                            keyboardType: TextInputType.number,
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: () => _auth.resendOTP(_phoneController.text),
-                            child: Text(
-                              "Resend OTP",
-                              style: GoogleFonts.outfit(
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ).animate().fadeIn().scale(),
-
-                    const SizedBox(height: 48),
-
-                    // Main Action Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 62,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          elevation: 10,
-                          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.35),
-                        ),
-                        onPressed: _status == AuthStatus.loading 
-                          ? null 
-                          : (_status == AuthStatus.confirming ? _verifyOTP : _handleAuth),
-                        child: _status == AuthStatus.loading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                            )
-                          : Text(
-                              _status == AuthStatus.confirming ? "Verify & Proceed" : (_isSignUp ? "Create Account" : "Sign In"),
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                      ),
-                    ).animate(target: _status == AuthStatus.loading ? 0 : 1)
-                     .shimmer(delay: 2.seconds, duration: 2.seconds)
-                     .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1)),
-
-                    const SizedBox(height: 24),
-
-                    // Switch Mode Toggle
-                    if (_status != AuthStatus.confirming)
-                      TextButton(
-                        onPressed: () => setState(() => _isSignUp = !_isSignUp),
-                        child: RichText(
-                          text: TextSpan(
-                            style: GoogleFonts.outfit(color: AppTheme.subtleColor, fontSize: 14),
-                            children: [
-                              TextSpan(text: _isSignUp ? "Already a member? " : "New to BlinKlean? "),
-                              TextSpan(
-                                text: _isSignUp ? "Login" : "Join Now",
-                                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
-                              ),
+                          if (_status != AuthStatus.confirming) ...[
+                            if (_isSignUp) ...[
+                              _buildPremiumField(
+                                controller: _nameController,
+                                hint: "Full Name",
+                                icon: Icons.person_outline_rounded,
+                              ).animate().fadeIn(delay: 500.ms),
+                              const SizedBox(height: 20),
+                              _buildPremiumField(
+                                controller: _emailController,
+                                hint: "Email (Optional)",
+                                icon: Icons.alternate_email_rounded,
+                                keyboardType: TextInputType.emailAddress,
+                              ).animate().fadeIn(delay: 600.ms),
+                              const SizedBox(height: 20),
                             ],
-                          ),
-                        ),
-                      ).animate().fadeIn(delay: 600.ms)
-                    else 
-                      TextButton(
-                        onPressed: () => setState(() => _status = AuthStatus.idle),
-                        child: Text(
-                          "Change Phone Number",
-                          style: GoogleFonts.outfit(color: Colors.grey, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-
-                    const SizedBox(height: 40),
-                    
-                    // Partner Section
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                )
-                              ],
-                            ),
-                            child: const Icon(Icons.handshake_rounded, color: AppTheme.primaryColor, size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            _buildPremiumField(
+                              controller: _phoneController,
+                              hint: "Mobile Number",
+                              icon: Icons.phone_iphone_rounded,
+                              keyboardType: TextInputType.phone,
+                            ).animate().fadeIn(delay: 700.ms),
+                          ] else 
+                            Column(
                               children: [
                                 Text(
-                                  "SERVICE PARTNER?",
+                                  "VERIFY MOBILE",
                                   style: GoogleFonts.outfit(
-                                    fontSize: 10,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w900,
-                                    color: AppTheme.subtleColor,
+                                    color: AppTheme.secondaryColor,
                                     letterSpacing: 2,
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: () => Navigator.pushNamed(context, '/provider-login'),
-                                  child: Text(
-                                    "Partner Dashboard",
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.textColor,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
+                                const SizedBox(height: 24),
+                                _buildPremiumField(
+                                  controller: _otpController,
+                                  hint: "6-Digit OTP",
+                                  icon: Icons.lock_clock_rounded,
+                                  keyboardType: TextInputType.number,
                                 ),
                               ],
-                            ),
-                          ),
-                          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey.shade400),
+                            ).animate().fadeIn().scale(),
+
+                          const SizedBox(height: 40),
+
+                          // ⚡ Action Button
+                          _buildActionButton()
+                              .animate(target: _status == AuthStatus.loading ? 0 : 1)
+                              .shimmer(delay: 2.seconds, duration: 2.seconds),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // 🔄 Mode Switcher
+                          if (_status != AuthStatus.confirming)
+                            TextButton(
+                              onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                              style: TextButton.styleFrom(foregroundColor: Colors.white60),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: GoogleFonts.outfit(fontSize: 14),
+                                  children: [
+                                    TextSpan(text: _isSignUp ? "Already a member? " : "New here? "),
+                                    TextSpan(
+                                      text: _isSignUp ? "Log In" : "Get Started",
+                                      style: const TextStyle(
+                                        color: AppTheme.secondaryColor, 
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ).animate().fadeIn(delay: 900.ms),
                         ],
                       ),
-                    ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.3),
+                    ),
+                  ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
 
-                    if (kDebugMode) ...[
-                      const SizedBox(height: 60),
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.bug_report_rounded, color: Colors.redAccent, size: 16),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "DEVELOPER QUICK ACCESS",
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.redAccent,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
-                              alignment: WrapAlignment.center,
-                              children: [
-                                _buildDebugButton(context, "CUSTOMER", () {
-                                  AuthService.setDebugRole(UserRole.customer);
-                                  Navigator.pushReplacementNamed(context, '/home');
-                                }),
-                                _buildDebugButton(context, "PARTNER", () {
-                                  AuthService.setDebugRole(UserRole.partner);
-                                  Navigator.pushReplacementNamed(context, '/home');
-                                }),
-                                _buildDebugButton(context, "ADMIN", () {
-                                  AuthService.setDebugRole(UserRole.admin);
-                                  Navigator.pushReplacementNamed(context, '/home');
-                                }),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ).animate().fadeIn(delay: 1.seconds),
-                    ],
+                  const SizedBox(height: 48),
+
+                  // 🤝 Role Switch Section
+                  if (_status == AuthStatus.idle) ...[
+                    const Text(
+                      "OR CONTINUE AS",
+                      style: TextStyle(
+                        color: Colors.white24,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                      ),
+                    ).animate().fadeIn(delay: 1.2.seconds),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildModernRoleBtn("Partner", Icons.handshake_rounded, () {
+                           Navigator.pushNamed(context, '/provider-login');
+                        }),
+                        const SizedBox(width: 16),
+                        _buildModernRoleBtn("Admin", Icons.admin_panel_settings_rounded, () {
+                           Navigator.pushNamed(context, '/admin-login');
+                        }),
+                      ],
+                    ).animate().fadeIn(delay: 1.4.seconds),
                   ],
-                ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton() {
+    return Container(
+      width: double.infinity,
+      height: 64,
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        onPressed: _status == AuthStatus.loading 
+          ? null 
+          : (_status == AuthStatus.confirming ? _verifyOTP : _handleAuth),
+        child: _status == AuthStatus.loading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            )
+          : Text(
+              _status == AuthStatus.confirming 
+                ? "Verify & Continue" 
+                : "Get Fast Access",
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildModernRoleBtn(String title, IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white54, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: GoogleFonts.outfit(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -439,68 +370,35 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDebugButton(BuildContext context, String label, VoidCallback onPressed) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey[100],
-        foregroundColor: Colors.black,
-        elevation: 0,
-        textStyle: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      onPressed: onPressed,
-      child: Text(label),
-    );
-  }
-
-  Widget _buildTextField({
+  Widget _buildPremiumField({
     required TextEditingController controller,
-    required String label,
-    required IconData icon,
     required String hint,
-    bool isPassword = false,
+    required IconData icon,
     TextInputType? keyboardType,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.outfit(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: AppTheme.subtleColor,
-            letterSpacing: 2,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        style: GoogleFonts.outfit(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.outfit(color: Colors.white24, fontSize: 16),
+          prefixIcon: Icon(icon, color: AppTheme.secondaryColor.withValues(alpha: 0.7), size: 22),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: AppTheme.secondaryColor, width: 1.5),
           ),
+          contentPadding: const EdgeInsets.all(20),
         ),
-        const SizedBox(height: 10),
-        TextFormField(
-          controller: controller,
-          obscureText: isPassword,
-          keyboardType: keyboardType,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 17),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.outfit(color: Colors.grey[300]),
-            prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 22),
-            filled: true,
-            fillColor: Colors.grey[50],
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: BorderSide(color: Colors.grey[100]!, width: 1.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-            ),
-          ),
-          validator: (v) => v == null || v.isEmpty ? "Required" : null,
-        ),
-      ],
+        validator: (v) => v == null || v.isEmpty ? "Required" : null,
+      ),
     );
   }
 }

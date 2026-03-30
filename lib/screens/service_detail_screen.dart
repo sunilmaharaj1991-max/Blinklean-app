@@ -1,9 +1,10 @@
-import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/app_theme.dart';
 import '../models/service_model.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/glass_card.dart';
 import 'booking_screen.dart';
 
 class ServiceDetailScreen extends StatelessWidget {
@@ -14,415 +15,239 @@ class ServiceDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FBF9),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Adaptive Hero Header
-          SliverAppBar(
-            expandedHeight: 340,
-            pinned: true,
-            stretch: true,
-            backgroundColor: AppTheme.primaryColor,
-            elevation: 0,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 16),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: IconButton(
-                  icon: const Icon(Icons.share_outlined, color: Colors.white),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [
-                StretchMode.zoomBackground,
-                StretchMode.blurBackground,
-              ],
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  FadeIn(
-                    duration: const Duration(seconds: 1),
-                    child: Image.network(
-                      service.imageUrl.isNotEmpty
-                          ? service.imageUrl
-                          : _getCategoryBackground(service.category),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  // Premium Gradient Overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        stops: const [0.0, 0.4, 0.8, 1.0],
-                        colors: [
-                          Colors.black.withValues(alpha: 0.5),
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.4),
-                          const Color(0xFFF9FBF9),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Content Layer
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
-
-                  // Header Badge & Title
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 600),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            service.category.toUpperCase(),
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.primaryColor,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                service.name,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.textColor,
-                                  letterSpacing: -1,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: service.buildIcon(
-                                color: AppTheme.primaryColor,
-                                size: 28,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Quick Stats
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 100),
-                    duration: const Duration(milliseconds: 600),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildStatItem(
-                            Icons.access_time_rounded,
-                            service.estimatedDuration,
-                            const Color(0xFF3F51B5),
-                          ),
-                          const SizedBox(width: 12),
-                          _buildStatItem(
-                            Icons.star_rounded,
-                            "4.8 (120+)",
-                            const Color(0xFFFFC107),
-                          ),
-                          const SizedBox(width: 12),
-                          _buildStatItem(
-                            Icons.verified_user_rounded,
-                            "Insurance Ready",
-                            const Color(0xFF4CAF50),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // About Section
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 200),
-                    duration: const Duration(milliseconds: 600),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Service Highlights',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          service.fullDescription,
-                          style: GoogleFonts.outfit(
-                            fontSize: 15,
-                            color: AppTheme.subtleColor,
-                            height: 1.6,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // What's Included Check-list
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 300),
-                    duration: const Duration(milliseconds: 600),
-                    child: _buildCheckList("What's Included", service.whatsIncluded),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Preparation List (Dynamic from Model)
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 400),
-                    duration: const Duration(milliseconds: 600),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Customer Obligations",
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.info_outline_rounded,
-                                size: 22,
-                                color: Colors.orange,
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "REQUIRED FOR SERVICE",
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.orange[800],
-                                        letterSpacing: 1.1,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      service.customerProvides.isNotEmpty 
-                                        ? service.customerProvides 
-                                        : "Standard access to the service location.",
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 14,
-                                        color: AppTheme.textColor,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                    if (service.category == 'Vehicle Care') ...[
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        "Note: Our partner will bring all necessary waterless cleaning equipment and tools.",
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 12,
-                                          fontStyle: FontStyle.italic,
-                                          color: AppTheme.subtleColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Bottom Buffer
-                  const SizedBox(height: 140),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomSheet: SlideInUp(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 30),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 40,
-                offset: const Offset(0, -10),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            bottom: true,
-            top: false,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Premium Package',
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.subtleColor,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        service.formattedPrice,
-                        style: GoogleFonts.outfit(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Container(
-                    height: 60,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (c) => BookingScreen(service: service),
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: Text(
-                        'Book Service',
-                        style: GoogleFonts.outfit(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: CircleAvatar(
+            backgroundColor: Colors.black26,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
         ),
       ),
+      body: PremiumBackground(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              // Immersive Hero Header
+              _buildHeroHeader(context),
+
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Stats Row
+                    _buildStatsRow().animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+
+                    const SizedBox(height: 32),
+
+                    // Service Info
+                    _buildSectionTitle("Service Highlights"),
+                    const SizedBox(height: 16),
+                    GlassCard(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        service.fullDescription,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          color: Colors.white70,
+                          height: 1.6,
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: 400.ms),
+
+                    const SizedBox(height: 32),
+
+                    // Checklist
+                    _buildSectionTitle("What's Included"),
+                    const SizedBox(height: 16),
+                    _buildCheckList(service.whatsIncluded).animate().fadeIn(delay: 600.ms),
+
+                    const SizedBox(height: 32),
+
+                    // Requirements
+                    _buildSectionTitle("Required for Service"),
+                    const SizedBox(height: 16),
+                    _buildRequirementCard().animate().fadeIn(delay: 800.ms),
+
+                    const SizedBox(height: 140), // Space for bottom sheet
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomSheet: _buildBottomBookBar(context),
+    );
+  }
+
+  Widget _buildHeroHeader(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          height: 400,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: NetworkImage(
+                service.imageUrl.isNotEmpty
+                    ? service.imageUrl
+                    : _getCategoryBackground(service.category),
+              ),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.4),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.8),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 40,
+          left: 24,
+          right: 24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.secondaryColor.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  service.category.toUpperCase(),
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.secondaryColor,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                service.name,
+                style: GoogleFonts.outfit(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -1,
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn().slideY(begin: 0.2),
+      ],
+    );
+  }
+
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        _buildStatItem(Icons.access_time_rounded, service.estimatedDuration, Colors.white60),
+        const SizedBox(width: 12),
+        _buildStatItem(Icons.star_rounded, "4.8 Rating", Colors.orangeAccent),
+        const SizedBox(width: 12),
+        _buildStatItem(Icons.verified_user_rounded, "Secure", Colors.blueAccent),
+      ],
     );
   }
 
   Widget _buildStatItem(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+    return Expanded(
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        color: Colors.white.withValues(alpha: 0.05),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title.toUpperCase(),
+      style: GoogleFonts.outfit(
+        fontSize: 12,
+        fontWeight: FontWeight.w900,
+        color: Colors.white30,
+        letterSpacing: 2,
+      ),
+    );
+  }
+
+  Widget _buildCheckList(List<String> items) {
+    return GlassCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: items.map((item) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.check_circle_rounded, size: 18, color: AppTheme.secondaryColor),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: GoogleFonts.outfit(fontSize: 14, color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildRequirementCard() {
+    return GlassCard(
+      padding: const EdgeInsets.all(20),
+      color: Colors.orangeAccent.withValues(alpha: 0.05),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
+          const Icon(Icons.info_outline_rounded, color: Colors.orangeAccent, size: 20),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              service.customerProvides.isNotEmpty 
+                  ? service.customerProvides 
+                  : "Standard access to the service location.",
+              style: GoogleFonts.outfit(fontSize: 14, color: Colors.white70, height: 1.5),
             ),
           ),
         ],
@@ -430,55 +255,51 @@ class ServiceDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCheckList(String title, List<String> items, {bool isWarn = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textColor,
+  Widget _buildBottomBookBar(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.8),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("TOTAL PRICE", style: GoogleFonts.outfit(fontSize: 10, color: Colors.white30, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                Text(service.formattedPrice, style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
-          ),
-          child: Column(
-            children: items.map((item) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      isWarn ? Icons.info_outline_rounded : Icons.check_circle_rounded,
-                      size: 18,
-                      color: isWarn ? Colors.orange : AppTheme.primaryColor,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        item,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: AppTheme.textColor,
-                        ),
-                      ),
-                    ),
-                  ],
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 2,
+            child: Container(
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => BookingScreen(service: service))),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
-              );
-            }).toList(),
+                child: Text('Book Premium Session', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

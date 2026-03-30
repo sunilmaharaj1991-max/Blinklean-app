@@ -5,8 +5,11 @@ import 'api_service.dart';
 
 enum UserRole { customer, partner, admin }
 
-class AuthService {
+class AuthService extends ChangeNotifier {
   static UserRole? _debugRole;
+  
+  bool _isOTPRequired = false;
+  bool get isOTPRequired => _isOTPRequired;
 
   Future<UserRole> getUserRole() async {
     if (kDebugMode && _debugRole != null) return _debugRole!;
@@ -39,38 +42,81 @@ class AuthService {
     }
   }
 
-  /// Standard Sign-In (Email/Password for Providers)
+  /// Standard Sign-In (Email/Password for Providers/Admins)
   Future<SignInResult?> signInProvider(String email, String password) async {
     return await Amplify.Auth.signIn(username: email, password: password);
   }
 
   /// Phone Sign-In (Trigger SMS OTP for Customers)
-  Future<SignInResult?> signInCustomer(String phoneNumber, String password) async {
-    return await Amplify.Auth.signIn(username: phoneNumber, password: password);
+  /// Using Custom Auth Flow - Password is not required from user but provided as a fixed secret
+  Future<SignInResult?> signInCustomer(String phoneNumber) async {
+    try {
+      final result = await Amplify.Auth.signIn(
+        username: phoneNumber, 
+        password: 'BlinkLeanCustomerAuth123!',
+      );
+      
+      if (result.nextStep.signInStep == AuthSignInStep.confirmSignInWithCustomChallenge) {
+        _isOTPRequired = true;
+        notifyListeners();
+      }
+      
+      return result;
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<SignUpResult> registerWithPhone({
     required String phoneNumber,
-    required String password,
-    required String name,
-    required String email,
-    String? address,
   }) async {
+    // Satisfy required schema attributes with placeholders
     final userAttributes = {
       AuthUserAttributeKey.phoneNumber: phoneNumber,
-      AuthUserAttributeKey.name: name,
-      AuthUserAttributeKey.email: email,
+      AuthUserAttributeKey.address: "Mumbai, India", 
+      AuthUserAttributeKey.name: "New BlinKlean User",
+      // Specifically addressing the names from the error message using Cognito-specific keys
+      const CognitoUserAttributeKey.custom("addresses"): "Mumbai, India",
+      const CognitoUserAttributeKey.custom("name.formatted"): "New BlinKlean User",
     };
 
     return await Amplify.Auth.signUp(
       username: phoneNumber,
-      password: password,
+      password: 'BlinkLeanCustomerAuth123!', 
       options: SignUpOptions(userAttributes: userAttributes),
     );
   }
 
+  /// Updates user profile attributes like Name and Email
+  Future<void> updateUserProfile({required String name, required String email}) async {
+    try {
+      final attributes = [
+        AuthUserAttribute(
+          userAttributeKey: AuthUserAttributeKey.name,
+          value: name,
+        ),
+        if (email.isNotEmpty)
+          AuthUserAttribute(
+            userAttributeKey: AuthUserAttributeKey.email,
+            value: email,
+          ),
+      ];
 
-  // Google Sign-In is handled via Authenticator or separate UI if configured
+      final result = await Amplify.Auth.updateUserAttributes(attributes: attributes);
+
+      result.forEach((key, value) {
+        if (value.isUpdated) {
+          safePrint('Attribute $key was updated successfully');
+        } else {
+          safePrint('Attribute $key update is pending: ${value.nextStep}');
+        }
+      });
+    } on AuthException catch (e) {
+      safePrint('Error updating attributes: ${e.message}');
+      rethrow;
+    }
+  }
+
   Future<SignInResult?> signInWithGoogle() async {
     return await Amplify.Auth.signInWithWebUI(provider: AuthProvider.google);
   }
@@ -79,7 +125,7 @@ class AuthService {
     await Amplify.Auth.signOut();
   }
 
-  Future<void> hideResetPassword(String phoneNumber) async {
+  Future<void> resetPassword(String phoneNumber) async {
     await Amplify.Auth.resetPassword(username: phoneNumber);
   }
 
@@ -107,15 +153,8 @@ class AuthService {
     );
   }
 
-  // Pure OTP login without password requires Custom Auth Trigger in Cognito.
-  // For standard flows, we use signIn(phone, password).
-  Future<SignInResult> signInWithPhoneOTP(
-    String phoneNumber,
-    String password,
-  ) async {
-    return await Amplify.Auth.signIn(
-      username: phoneNumber,
-      password: password,
-    );
+  // Handle Custom Challenge (OTP) during Sign In
+  Future<SignInResult> confirmSignInOTP(String otp) async {
+    return await Amplify.Auth.confirmSignIn(confirmationValue: otp);
   }
 }

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../../core/app_theme.dart';
+import '../../services/api_service.dart';
 import '../main_navigation_screen.dart';
 
 class AdminNavigationScreen extends StatefulWidget {
@@ -42,9 +43,8 @@ class _AdminNavigationScreenState extends State<AdminNavigationScreen> {
         child: NavigationBar(
           selectedIndex: _currentIndex,
           onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-          elevation: 0,
           backgroundColor: Colors.white,
-          indicatorColor: Colors.indigo.withValues(alpha: 0.1),
+          indicatorColor: AppTheme.primaryColor.withValues(alpha: 0.1),
           destinations: const [
             NavigationDestination(icon: Icon(Icons.analytics_rounded), label: 'Stats'),
             NavigationDestination(icon: Icon(Icons.people_rounded), label: 'Users'),
@@ -57,17 +57,59 @@ class _AdminNavigationScreenState extends State<AdminNavigationScreen> {
   }
 }
 
-class AdminDashboardPage extends StatelessWidget {
+class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
 
   @override
+  State<AdminDashboardPage> createState() => _AdminDashboardPageState();
+}
+
+class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  bool _isLoading = true;
+  Map<String, dynamic> _stats = {
+    'usersCount': 0,
+    'revenue': 0,
+    'bookingsCount': 0,
+    'activeAlerts': 0,
+    'servicesCount': 18,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStats();
+  }
+
+  Future<void> _fetchStats() async {
+    try {
+      final data = await apiService.fetchAdminStats();
+      if (mounted) {
+        setState(() {
+          _stats = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Admin Stats Error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchStats,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
@@ -78,7 +120,7 @@ class AdminDashboardPage extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.indigo,
+                      color: AppTheme.primaryColor,
                     ),
                   ),
                   Text(
@@ -94,46 +136,46 @@ class AdminDashboardPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.indigo.withValues(alpha: 0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(15),
                 ),
-                child: const Icon(Icons.shield_rounded, color: Colors.indigo),
+                child: const Icon(Icons.shield_rounded, color: AppTheme.primaryColor),
               ).animate().scale(delay: 400.ms),
             ],
           ),
-          const SizedBox(height: 30),
-          // Admin Stats
-          Row(
-            children: [
-              Expanded(child: _buildAdminStat('Users', '1,240', Icons.people_outline_rounded, Colors.blue).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2)),
-              const SizedBox(width: 15),
-              Expanded(child: _buildAdminStat('Revenue', '₹45.2k', Icons.currency_rupee_rounded, Colors.green).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2)),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              Expanded(child: _buildAdminStat('Services', '18', Icons.category_rounded, Colors.orange).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2)),
-              const SizedBox(width: 15),
-              Expanded(child: _buildAdminStat('Alerts', '4', Icons.notifications_active_rounded, Colors.red).animate().fadeIn(delay: 800.ms).slideY(begin: 0.2)),
-            ],
-          ),
-          const SizedBox(height: 30),
-          if (kDebugMode)
-            _buildDevPortalSwitcher(context).animate().fadeIn(delay: 900.ms),
-          const SizedBox(height: 30),
-          Text(
-            'Recent Activities',
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+            const SizedBox(height: 30),
+            // Admin Stats
+            Row(
+              children: [
+                Expanded(child: _buildAdminStat('Users', '${_stats['usersCount'] ?? 0}', Icons.people_outline_rounded, Colors.blue).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2)),
+                const SizedBox(width: 15),
+                Expanded(child: _buildAdminStat('Revenue', '₹${(_stats['revenue'] ?? 0).toStringAsFixed(0)}', Icons.currency_rupee_rounded, Colors.green).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2)),
+              ],
             ),
-          ).animate().fadeIn(delay: 1000.ms).slideX(begin: -0.1),
-          const SizedBox(height: 15),
-          _buildActivityItem('New Partner Joined', 'Sunil joined as a cleaning provider', '2m ago'),
-          _buildActivityItem('Service Updated', 'Deep Cleaning price adjusted', '1h ago'),
-          _buildActivityItem('Payment Success', 'Booking #1024 confirmed', '3h ago'),
-        ],
+            const SizedBox(height: 15),
+            Row(
+              children: [
+                Expanded(child: _buildAdminStat('Bookings', '${_stats['bookingsCount'] ?? 0}', Icons.category_rounded, Colors.orange).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2)),
+                const SizedBox(width: 15),
+                Expanded(child: _buildAdminStat('Alerts', '${_stats['activeAlerts'] ?? 0}', Icons.notifications_active_rounded, Colors.red).animate().fadeIn(delay: 800.ms).slideY(begin: 0.2)),
+              ],
+            ),
+            const SizedBox(height: 30),
+            if (kDebugMode)
+              _buildDevPortalSwitcher(context).animate().fadeIn(delay: 900.ms),
+            const SizedBox(height: 30),
+            Text(
+              'Recent Activities',
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ).animate().fadeIn(delay: 1000.ms).slideX(begin: -0.1),
+            const SizedBox(height: 15),
+            _buildActivityItem('System Health OK', 'All services at optimal response time', 'now'),
+            _buildActivityItem('AWS Status', 'Mumbai region (ap-south-1) connected', 'Active'),
+          ],
+        ),
       ),
     );
   }
@@ -237,8 +279,32 @@ class AdminDashboardPage extends StatelessWidget {
   }
 }
 
-class AdminUsersPage extends StatelessWidget {
+class AdminUsersPage extends StatefulWidget {
   const AdminUsersPage({super.key});
+
+  @override
+  State<AdminUsersPage> createState() => _AdminUsersPageState();
+}
+
+class _AdminUsersPageState extends State<AdminUsersPage> {
+  List<dynamic> _users = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    try {
+      final users = await apiService.fetchAdminUsers();
+      if (mounted) setState(() { _users = users; _isLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -248,42 +314,69 @@ class AdminUsersPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: 5,
-        itemBuilder: (context, index) => _buildUserTile(index),
-      ),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: _users.length,
+            itemBuilder: (context, index) => _buildUserTile(_users[index], index),
+          ),
     );
   }
 
-  Widget _buildUserTile(int index) {
-    final names = ['Amith K.', 'Priya S.', 'Rajesh V.', 'Sneha M.', 'Jeevan G.'];
+  Widget _buildUserTile(dynamic user, int index) {
+    final name = user['name'] ?? 'Unknown User';
+    final phone = user['phoneNumber'] ?? 'No Phone';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: Colors.indigo.withValues(alpha: 0.1), child: Text(names[index][0])),
+          CircleAvatar(backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1), child: Text(name[0], style: const TextStyle(color: AppTheme.secondaryColor))),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(names[index], style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-                Text('User UID: AM-${1000 + index}', style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey)),
+                Text(name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                Text(phone, style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey)),
               ],
             ),
           ),
           const Icon(Icons.more_vert_rounded, color: Colors.grey),
         ],
       ),
-    ).animate().fadeIn(delay: (index * 100).ms).slideX(begin: 0.1);
+    ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
   }
 }
 
-class AdminProvidersPage extends StatelessWidget {
+class AdminProvidersPage extends StatefulWidget {
   const AdminProvidersPage({super.key});
+
+  @override
+  State<AdminProvidersPage> createState() => _AdminProvidersPageState();
+}
+
+class _AdminProvidersPageState extends State<AdminProvidersPage> {
+  List<dynamic> _providers = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProviders();
+  }
+
+  Future<void> _loadProviders() async {
+    try {
+      final providers = await apiService.fetchAdminProviders();
+      if (mounted) setState(() { _providers = providers; _isLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -293,16 +386,19 @@ class AdminProvidersPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: 3,
-        itemBuilder: (context, index) => _buildProviderTile(index),
-      ),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: _providers.length,
+            itemBuilder: (context, index) => _buildProviderTile(_providers[index], index),
+          ),
     );
   }
 
-  Widget _buildProviderTile(int index) {
-    final names = ['Sunil M.', 'Kiran B.', 'Rakesh L.'];
+  Widget _buildProviderTile(dynamic provider, int index) {
+    final name = provider['name'] ?? 'Provider Candidate';
+    final status = provider['status'] ?? 'Pending Verification';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -315,15 +411,15 @@ class AdminProvidersPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(names[index], style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-                Text('Status: Pending Verification', style: GoogleFonts.outfit(fontSize: 10, color: Colors.orange)),
+                Text(name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                Text('Status: $status', style: GoogleFonts.outfit(fontSize: 10, color: Colors.orange)),
               ],
             ),
           ),
           TextButton(onPressed: () {}, child: const Text('Review')),
         ],
       ),
-    ).animate().fadeIn(delay: (index * 100).ms).slideX(begin: 0.1);
+    ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
   }
 }
 

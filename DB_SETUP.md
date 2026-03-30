@@ -1,41 +1,39 @@
-# Blinklean Database Setup
+# BlinKlean AWS Database Setup (DynamoDB)
 
-## Quick Setup Instructions
+We use **Amazon DynamoDB** as our primary persistence layer in the `ap-south-1` (Mumbai) region. This provides high-speed, scalable data storage compatible with our AWS-native architecture.
 
-### 1. Go to Supabase Dashboard
-Navigate to your Supabase project at: https://supabase.com/dashboard
+## 1. Tables Overview
 
-### 2. Open SQL Editor
-- Click on **SQL Editor** in the left sidebar
-- Click **New Query**
+| Table Name | Partition Key (Hashed) | Sort Key (Range) | Purpose |
+| :--- | :--- | :--- | :--- |
+| `BlinkleanBookings` | `bookingId` (String) | `None` | Stores cleaning service registrations |
+| `BlinkleanScrapPickups` | `pickupId` (String) | `None` | Stores scrap collection requests |
+| `BlinkleanUsers` | `userId` (String) | `None` | Stores extended user profiles (Last Login, Stats) |
 
-### 3. Run the Schema
-Copy and paste the contents of `supabase_schema.sql` into the SQL editor and click **Run**
+## 2. Global Secondary Indexes (GSIs)
 
-### 4. Verify Setup
-After running, you should see success messages for all created tables.
+To enable fast queries by user (e.g., "My Bookings"), create the following GSIs:
 
-## Tables Created
+**Table: `BlinkleanBookings`**
 
-| Table | Purpose |
-|-------|---------|
-| `users` | User profiles synced with Firebase Auth |
-| `services` | Available cleaning services with prices |
-| `bookings` | Service booking records |
-| `scrap_prices` | Scrap material price list |
-| `scrap_pickups` | Scrap collection requests |
-| `scrap_pickup_items` | Items in each scrap pickup |
-| `pincode_availability` | Service coverage by pincode |
-| `notifications` | User notifications |
+- Index Name: `UserIndex`
+- Partition Key: `userId` (String)
+- Attribute Projections: `ALL`
 
-## Security (RLS)
-Row Level Security is enabled on all tables:
-- Users can only access their own data
-- Services and prices are publicly readable
-- Service role has full access
+**Table: `BlinkleanScrapPickups`**
 
-## Testing Locally
-The app has fallback/mock data if the database tables don't exist yet, so you can continue development without the database.
+- Index Name: `UserIndex`
+- Partition Key: `userId` (String)
+- Attribute Projections: `ALL`
+
+## 3. Deployment Steps
+
+1. IAM Role: Ensure your Lambda functions have `AmazonDynamoDBFullAccess` (or least-privilege `GetItem`, `PutItem`, `UpdateItem`, `Query`).
+2. Environment Variables: In your Lambda configuration, set:
+   - `BOOKINGS_TABLE`: `BlinkleanBookings`
+   - `SCRAP_TABLE`: `BlinkleanScrapPickups`
+3. API Gateway: Create a **REST API** with a **Cognito Authorizer** to protect the routes.
 
 ## Need Help?
-Check the Supabase docs: https://supabase.com/docs
+
+Check the AWS DynamoDB docs: [DynamoDB Developer Guide](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html)

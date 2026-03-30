@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
-import 'package:amplify_authenticator/amplify_authenticator.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 
 import 'amplifyconfiguration.dart';
@@ -13,6 +12,9 @@ import 'screens/admin/admin_provider_onboarding_screen.dart';
 import 'screens/provider/provider_login_screen.dart';
 import 'screens/provider/partner_navigation_screen.dart';
 import 'screens/admin/admin_navigation_screen.dart';
+import 'screens/admin/admin_login_screen.dart';
+import 'screens/otp_verification_screen.dart';
+import 'screens/profile_setup_screen.dart';
 import 'services/auth_service.dart';
 
 void main() async {
@@ -51,37 +53,30 @@ class BlinKleanApp extends StatefulWidget {
 class _BlinKleanAppState extends State<BlinKleanApp> {
   @override
   Widget build(BuildContext context) {
-    return Authenticator(
-      signUpForm: SignUpForm.custom(
-        fields: [
-          SignUpFormField.name(required: true),
-          SignUpFormField.phoneNumber(required: true),
-        ],
-      ),
-      authenticatorBuilder: (context, state) {
-        switch (state.currentStep) {
-          case AuthenticatorStep.signIn:
-          case AuthenticatorStep.signUp:
-          case AuthenticatorStep.confirmSignUp:
-            return const LoginScreen();
-          default:
-            return null;
-        }
-      },
-      child: MaterialApp(
-        title: 'BlinKlean',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        builder: Authenticator.builder(),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const SplashScreen(),
-          '/login': (context) => const LoginScreen(),
-          '/home': (context) => const MainEntry(),
-          '/admin-onboarding': (context) => const AdminProviderOnboardingScreen(),
-          '/provider-login': (context) => const ProviderLoginScreen(),
+    return MaterialApp(
+      title: 'BlinKlean',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/home': (context) => const MainEntry(),
+        '/admin-onboarding': (context) => const AdminProviderOnboardingScreen(),
+        '/provider-login': (context) => const ProviderLoginScreen(),
+        '/admin-dashboard': (context) => const AdminNavigationScreen(),
+        '/admin-login': (context) => const AdminLoginScreen(),
+        '/partner-home': (context) => const PartnerNavigationScreen(),
+        '/customer-home': (context) => const MainNavigationScreen(),
+        '/profile-setup': (context) => const ProfileSetupScreen(),
+        '/verify-otp': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return OtpVerificationScreen(
+            phoneNumber: args['phoneNumber'] as String,
+            isSignUp: args['isSignUp'] as bool? ?? false,
+          );
         },
-      ),
+      },
     );
   }
 }
@@ -95,13 +90,18 @@ class MainEntry extends StatefulWidget {
 
 class _MainEntryState extends State<MainEntry> {
   final AuthService _auth = AuthService();
+  late Future<UserRole> _roleFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _roleFuture = _auth.getUserRole();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final Future<UserRole> roleFuture = _auth.getUserRole();
-    
-    final child = FutureBuilder<UserRole>(
-      future: roleFuture,
+    return FutureBuilder<UserRole>(
+      future: _roleFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -120,8 +120,5 @@ class _MainEntryState extends State<MainEntry> {
         }
       },
     );
-
-    // Return the role-based navigation child directly as Authenticator now wraps the whole app
-    return child;
   }
 }

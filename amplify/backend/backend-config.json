@@ -1,7 +1,7 @@
 {
   "auth": {
-    "blinkleanace65002": {
-      "customAuth": false,
+    "blinkleanf9a2cc33f9a2cc33": {
+      "customAuth": true,
       "dependsOn": [
         {
           "attributes": [
@@ -9,7 +9,7 @@
             "Name"
           ],
           "category": "function",
-          "resourceName": "blinkleanace65002CreateAuthChallenge",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge",
           "triggerProvider": "Cognito"
         },
         {
@@ -18,7 +18,7 @@
             "Name"
           ],
           "category": "function",
-          "resourceName": "blinkleanace65002DefineAuthChallenge",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33DefineAuthChallenge",
           "triggerProvider": "Cognito"
         },
         {
@@ -27,7 +27,7 @@
             "Name"
           ],
           "category": "function",
-          "resourceName": "blinkleanace65002VerifyAuthChallengeResponse",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse",
           "triggerProvider": "Cognito"
         }
       ],
@@ -41,11 +41,13 @@
           "passwordPolicyMinLength": 8
         },
         "signupAttributes": [
-          "EMAIL"
+          "ADDRESS",
+          "NAME",
+          "PHONE_NUMBER"
         ],
         "socialProviders": [],
         "usernameAttributes": [
-          "EMAIL"
+          "PHONE_NUMBER"
         ],
         "verificationMechanisms": [
           "PHONE_NUMBER"
@@ -53,6 +55,22 @@
       },
       "providerPlugin": "awscloudformation",
       "service": "Cognito"
+    },
+    "userPoolGroups": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId",
+            "AppClientIDWeb",
+            "AppClientID",
+            "IdentityPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito-UserPool-Groups"
     }
   },
   "function": {
@@ -67,6 +85,21 @@
       "service": "Lambda"
     },
     "blinkleanace65002VerifyAuthChallengeResponse": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "blinkleanf9a2cc33f9a2cc33DefineAuthChallenge": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse": {
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
@@ -118,6 +151,54 @@
         {
           "category": "function",
           "resourceName": "blinkleanace65002VerifyAuthChallengeResponse"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanf9a2cc33f9a2cc33CreateAuthChallenge_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanf9a2cc33f9a2cc33CreateAuthChallenge_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanf9a2cc33f9a2cc33DefineAuthChallenge_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33DefineAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanf9a2cc33f9a2cc33DefineAuthChallenge_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33DefineAuthChallenge"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse"
+        }
+      ]
+    },
+    "AMPLIFY_function_blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "blinkleanf9a2cc33f9a2cc33VerifyAuthChallengeResponse"
         }
       ]
     },

@@ -1,0 +1,16 @@
+{
+  "trigger": true,
+  "modules": [
+    "boilerplate-create-challenge"
+  ],
+  "parentResource": "blinkleanf9a2cc33f9a2cc33",
+  "functionName": "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge",
+  "resourceName": "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge",
+  "parentStack": "auth",
+  "triggerEnvs": "[]",
+  "triggerDir": "C:\\snapshot\\amplify-cli\\build\\node_modules\\@aws-amplify\\amplify-category-auth\\provider-utils\\awscloudformation\\triggers\\CreateAuthChallenge",
+  "triggerTemplate": "CreateAuthChallenge.json.ejs",
+  "triggerEventPath": "CreateAuthChallenge.event.json",
+  "roleName": "blinkleanf9a2cc33f9a2cc33CreateAuthChallenge",
+  "skipEdit": true
+}

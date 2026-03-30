@@ -1,4 +1,5 @@
 import 'package:geolocator/geolocator.dart';
+import 'api_service.dart';
 
 class LocationService {
 
@@ -12,10 +13,20 @@ class LocationService {
     '560010', // Basaveshwaranagar
   ];
 
+  // Fetch supported pincodes from AWS S3
+  Future<List<String>> _getSupportedPincodes() async {
+    try {
+      final List<dynamic> data = await apiService.fetchMasterData('pincodes');
+      if (data.isEmpty) return _supportedPincodes; // Fallback
+      return data.map((e) => e.toString()).toList();
+    } catch (e) {
+      return _supportedPincodes;
+    }
+  }
+
   Future<bool> isServiceAvailable(String pincode) async {
-    // Simulate a network delay
-    await Future.delayed(const Duration(milliseconds: 800));
-    return _supportedPincodes.contains(pincode.trim());
+    final supported = await _getSupportedPincodes();
+    return supported.contains(pincode.trim());
   }
 
   Future<Map<String, dynamic>> checkServiceAvailability(String pincode) async {
