@@ -247,7 +247,7 @@ class _LocationAvailabilityScreenState
         : Icons.info_outline_rounded;
 
     return GlassCard(
-      key: ValueKey('result_${available}'),
+      key: ValueKey('result_$available'),
       padding: const EdgeInsets.all(24),
       borderOpacity: 0.2,
       child: Column(
@@ -310,7 +310,7 @@ class _LocationAvailabilityScreenState
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
-              pageBuilder: (_, anim, __) => FadeTransition(opacity: anim, child: const MainNavigationScreen()),
+              pageBuilder: (_, anim, _) => FadeTransition(opacity: anim, child: const MainNavigationScreen()),
               transitionDuration: const Duration(milliseconds: 800),
             ),
           );

@@ -37,7 +37,7 @@ class PremiumBackground extends StatelessWidget {
           ..._buildGlows(),
 
           // The Content
-          if (child != null) child!,
+          ?child,
         ],
       ),
     );
