@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +9,7 @@ import '../core/app_theme.dart';
 import '../utils/validators.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/glass_card.dart';
+import '../screens/main_navigation_screen.dart';
 
 class ScrapScreen extends StatefulWidget {
   const ScrapScreen({super.key});
@@ -58,6 +60,11 @@ class _ScrapScreenState extends State<ScrapScreen> {
   void initState() {
     super.initState();
     _startAutoScroll();
+    if (kDebugMode) {
+      _nameController.text = "Demo User";
+      _phoneController.text = "+91 9988776655";
+      _addressController.text = "123 Green Valley, Mumbai";
+    }
   }
 
   void _startAutoScroll() {
@@ -143,6 +150,13 @@ class _ScrapScreenState extends State<ScrapScreen> {
     setState(() => _isLoading = true);
 
     try {
+      if (kDebugMode) {
+        // High-impact Demo Flow
+        await Future.delayed(2.seconds);
+        if (mounted) _showBookingSuccessDialog();
+        return;
+      }
+
       final pickupData = {
         'name': _nameController.text,
         'phone': _phoneController.text,
@@ -167,6 +181,82 @@ class _ScrapScreenState extends State<ScrapScreen> {
     }
   }
 
+  void _showBookingSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.9),
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(40),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                  ),
+                  child: const Icon(Icons.eco_rounded, color: AppTheme.primaryColor, size: 64),
+                ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+                const SizedBox(height: 32),
+                Text(
+                  'PICKUP SCHEDULED!',
+                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1),
+                ).animate().fadeIn(delay: 400.ms),
+                const SizedBox(height: 12),
+                Text(
+                  kDebugMode ? '(DEMO MODE - NO REAL PICKUP)' : 'Our partner will reach you shortly.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                ).animate().fadeIn(delay: 500.ms),
+                const SizedBox(height: 40),
+                Divider(color: Colors.white.withValues(alpha: 0.1)),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Recyc-ID', style: GoogleFonts.outfit(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.w800)),
+                    Text('#BK-SCRAP-9901', style: GoogleFonts.outfit(color: AppTheme.secondaryColor, fontWeight: FontWeight.w900)),
+                  ],
+                ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (c) => const MainNavigationScreen()), (r) => false);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                    ),
+                    child: Text('RETURN TO DASHBOARD', style: GoogleFonts.outfit(fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -181,7 +271,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
-                  _buildNavHeader(),
+                  _buildNavHeader().animate().fadeIn(duration: 400.ms).slideX(begin: -0.1),
                   const SizedBox(height: 20),
                   _buildHeroCard().animate().fadeIn(duration: 600.ms).slideY(begin: -0.1),
                   const SizedBox(height: 32),
@@ -197,12 +287,29 @@ class _ScrapScreenState extends State<ScrapScreen> {
                   ],
                   _buildContactForm().animate().fadeIn(delay: 800.ms),
                   const SizedBox(height: 32),
-                  if (_scrapItems.isNotEmpty) _buildSubmitButton().animate().scale(curve: Curves.easeOutBack),
+                  if (_scrapItems.isNotEmpty) _buildSubmitButton().animate().scale(curve: Curves.easeOutBack, delay: 200.ms),
                   const SizedBox(height: 120),
                 ],
               ),
             ),
           ),
+          if (kDebugMode)
+            Positioned(
+              top: 50,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.orangeAccent, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.bug_report_rounded, color: Colors.black, size: 14),
+                    const SizedBox(width: 6),
+                    Text('DEMO MODE', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.black)),
+                  ],
+                ),
+              ),
+            ).animate().fadeIn(delay: 1.seconds),
         ],
       ),
     );
@@ -222,7 +329,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
         ),
         const SizedBox(width: 20),
         Text(
-          'Sell Scrap',
+          'Sustainable Pickup',
           style: GoogleFonts.outfit(
             fontSize: 24,
             fontWeight: FontWeight.w900,
@@ -291,7 +398,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _selectedCategory != null ? 'Selling $_selectedCategory' : 'Sell Your Scrap',
+                            _selectedCategory != null ? 'Recycling $_selectedCategory' : 'Empower Sustainability',
                             style: GoogleFonts.outfit(
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
@@ -299,7 +406,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
                             ),
                           ),
                           Text(
-                            'AI-Verified Recycling Partner',
+                            'Premium Resource Recovery Platform',
                             style: GoogleFonts.outfit(
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.7),
@@ -330,17 +437,17 @@ class _ScrapScreenState extends State<ScrapScreen> {
               const Icon(Icons.auto_awesome_rounded, color: AppTheme.primaryColor, size: 20),
               const SizedBox(width: 10),
               Text(
-                'Instant Pickup Guide',
+                'Instant Resource Recovery',
                 style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          _buildGuideStep(1, 'Log Material', 'Choose scrap and enter weight.'),
-          _buildGuideStep(2, 'Set Location', 'Drop your address and phone.'),
-          _buildGuideStep(3, 'Relax & Earn', 'Our exec picks it up, you get paid!'),
+          _buildGuideStep(1, 'Log Components', 'Select materials and estimate volume.'),
+          _buildGuideStep(2, 'Deployment Point', 'Specify your pickup coordinates.'),
+          _buildGuideStep(3, 'Verify & Collect', 'Professional recovery & instant credits.'),
         ],
-      ),
+      ).animate().fadeIn(delay: 300.ms),
     );
   }
 
@@ -383,11 +490,11 @@ class _ScrapScreenState extends State<ScrapScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'What do you have?',
+              'Material Stream',
               style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
             ),
             Text(
-              'SWIPE',
+              'SWIPE TO DISCOVER',
               style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primaryColor, letterSpacing: 1),
             ),
           ],
@@ -412,8 +519,8 @@ class _ScrapScreenState extends State<ScrapScreen> {
                 margin: const EdgeInsets.only(right: 15),
                 decoration: BoxDecoration(
                   gradient: isSelected
-                      ? LinearGradient(
-                          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.7)],
+                      ? const LinearGradient(
+                          colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         )
@@ -461,7 +568,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Approximate Weight',
+          'Load Parameters',
           style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
         ),
         const SizedBox(height: 16),
@@ -475,7 +582,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
                   keyboardType: TextInputType.number,
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w800, color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'Enter weight (kg)',
+                    hintText: 'Enter mass (kg)',
                     hintStyle: GoogleFonts.outfit(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.w600),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
                     border: InputBorder.none,
@@ -490,7 +597,7 @@ class _ScrapScreenState extends State<ScrapScreen> {
                 height: 60,
                 width: 60,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppTheme.primaryColor, Color(0xFF148B3D)]),
+                  gradient: const LinearGradient(colors: [AppTheme.primaryColor, AppTheme.secondaryColor]),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5))],
                 ),
@@ -512,8 +619,8 @@ class _ScrapScreenState extends State<ScrapScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('My Scrap List', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
-              Text('${_scrapItems.length} ITEMS', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primaryColor, letterSpacing: 1)),
+              Text('Inventory Node', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+              Text('${_scrapItems.length} STREAMS', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.secondaryColor, letterSpacing: 1)),
             ],
           ),
           const SizedBox(height: 20),
@@ -546,8 +653,8 @@ class _ScrapScreenState extends State<ScrapScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total Weight', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.5))),
-              Text('${_totalWeight.toStringAsFixed(1)} kg', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)),
+              Text('Net Mass', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.5))),
+              Text('${_totalWeight.toStringAsFixed(1)} kg', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.secondaryColor)),
             ],
           ),
         ],
@@ -560,25 +667,26 @@ class _ScrapScreenState extends State<ScrapScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Contact & Location',
+          'Operational Details',
           style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
         ),
         const SizedBox(height: 20),
-        _buildGlassField(_nameController, 'Your Full Name', Icons.person_rounded),
+        _buildGlassField(_nameController, 'Operator Name', Icons.person_rounded),
         const SizedBox(height: 15),
-        _buildGlassField(_phoneController, 'Active Phone Number', Icons.phone_rounded),
+        _buildGlassField(_phoneController, 'Communication Channel', Icons.phone_rounded, keyboardType: TextInputType.phone),
         const SizedBox(height: 15),
-        _buildGlassField(_addressController, 'Detailed Pickup Address', Icons.location_on_rounded, maxLines: 2),
+        _buildGlassField(_addressController, 'Pickup Coordinates (Address)', Icons.location_on_rounded, maxLines: 2),
       ],
     );
   }
 
-  Widget _buildGlassField(TextEditingController controller, String hint, IconData icon, {int maxLines = 1}) {
+  Widget _buildGlassField(TextEditingController controller, String hint, IconData icon, {int maxLines = 1, TextInputType? keyboardType}) {
     return GlassCard(
       padding: EdgeInsets.zero,
       child: TextField(
         controller: controller,
         maxLines: maxLines,
+        keyboardType: keyboardType,
         style: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15),
         decoration: InputDecoration(
           hintText: hint,
@@ -610,9 +718,9 @@ class _ScrapScreenState extends State<ScrapScreen> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('PROCEED BOOKING', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                  Text('INITIATE RECOVERY', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
                   const SizedBox(width: 12),
-                  const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
                 ],
               ),
       ),

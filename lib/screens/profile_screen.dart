@@ -11,6 +11,7 @@ import '../widgets/brand_logo.dart';
 import 'admin/admin_navigation_screen.dart';
 import 'provider/partner_navigation_screen.dart';
 import 'booking_history_screen.dart';
+import '../services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -32,6 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserAttributes() async {
     try {
       final attributes = await Amplify.Auth.fetchUserAttributes();
+      if (!mounted) return;
       for (var attr in attributes) {
         if (attr.userAttributeKey == AuthUserAttributeKey.name) {
           setState(() => _userName = attr.value);
@@ -82,12 +84,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         context,
                         MaterialPageRoute(builder: (c) => const BookingHistoryScreen()),
                       ),
+                      delay: 200.ms,
                     ),
                     _buildModernMenuItem(
                       Icons.location_on_outlined,
                       'My Addresses',
                       'Delivery locations',
                       () {},
+                      delay: 300.ms,
                     ),
                     _buildModernMenuItem(
                       Icons.logout_rounded,
@@ -95,9 +99,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Securely log out',
                       _handleSignOut,
                       isDestructive: true,
+                      delay: 400.ms,
                     ),
                   ],
-                ).animate().fadeIn(delay: 400.ms),
+                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
 
                 const SizedBox(height: 24),
 
@@ -286,6 +291,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String subtitle,
     VoidCallback onTap, {
     bool isDestructive = false,
+    Duration? delay,
   }) {
     return Material(
       color: Colors.transparent,
@@ -341,7 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-    );
+    ).animate(delay: delay ?? 0.ms).fadeIn(duration: 400.ms).slideX(begin: 0.1);
   }
 
   Future<void> _handleSignOut() async {
@@ -382,6 +388,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (confirm == true) {
       await Amplify.Auth.signOut();
+      if (kDebugMode) {
+        AuthService.setDebugRole(null);
+      }
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
     }
   }
 

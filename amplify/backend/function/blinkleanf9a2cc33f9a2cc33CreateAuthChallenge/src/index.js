@@ -1,33 +1,31 @@
-/**
- * @fileoverview
- *
- * This CloudFormation Trigger creates a handler which awaits the other handlers
- * specified in the `MODULES` env var, located at `./${MODULE}`.
- */
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const sns = new SNSClient();
 
-/**
- * The names of modules to load are stored as a comma-delimited string in the
- * `MODULES` env var.
- */
-const moduleNames = process.env.MODULES.split(',');
-/**
- * The array of imported modules.
- */
-const modules = moduleNames.map((name) => require(`./${name}`));
+exports.handler = async (event) => {
+    if (event.request.challengeName === 'CUSTOM_CHALLENGE') {
+        const phoneNumber = event.request.userAttributes.phone_number;
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        console.log(`Attempting to send OTP: ${otpCode} to ${phoneNumber}`);
+        
+        try {
+            await sns.send(new PublishCommand({
+                Message: `Your BlinKlean verification code is: ${otpCode}`,
+                PhoneNumber: phoneNumber,
+                MessageAttributes: {
+                    'AWS.SNS.SMS.SMSType': { DataType: 'String', StringValue: 'Transactional' }
+                }
+            }));
+            console.log('OTP sent successfully');
+        } catch (error) {
+            console.error('Error sending OTP via SNS:', error);
+            // Optionally rethrow if you want to fail the challenge creation
+            throw error;
+        }
 
-/**
- * This async handler iterates over the given modules and awaits them.
- *
- * @see https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html#nodejs-handler-async
- * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
- *
- */
-exports.handler = async (event, context) => {
-  /**
-   * Instead of naively iterating over all handlers, run them concurrently with
-   * `await Promise.all(...)`. This would otherwise just be determined by the
-   * order of names in the `MODULES` var.
-   */
-  await Promise.all(modules.map((module) => module.handler(event, context)));
-  return event;
+        event.response.publicChallengeParameters = { phone: phoneNumber };
+        event.response.privateChallengeParameters = { answer: otpCode };
+    }
+    return event;
 };
+

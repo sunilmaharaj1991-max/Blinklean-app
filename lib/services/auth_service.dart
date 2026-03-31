@@ -6,7 +6,7 @@ import 'api_service.dart';
 enum UserRole { customer, partner, admin }
 
 class AuthService extends ChangeNotifier {
-  static UserRole? _debugRole;
+  static UserRole? _debugRole = kDebugMode ? UserRole.customer : null;
   
   bool _isOTPRequired = false;
   bool get isOTPRequired => _isOTPRequired;
@@ -28,7 +28,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  static void setDebugRole(UserRole role) {
+  static void setDebugRole(UserRole? role) {
     _debugRole = role;
   }
 
@@ -50,9 +50,10 @@ class AuthService extends ChangeNotifier {
   /// Phone Sign-In (Trigger SMS OTP for Customers)
   /// Using Custom Auth Flow - Password is not required from user but provided as a fixed secret
   Future<SignInResult?> signInCustomer(String phoneNumber) async {
+    final formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+91$phoneNumber';
     try {
       final result = await Amplify.Auth.signIn(
-        username: phoneNumber, 
+        username: formattedPhone, 
         password: 'BlinkLeanCustomerAuth123!',
       );
       
@@ -70,9 +71,10 @@ class AuthService extends ChangeNotifier {
   Future<SignUpResult> registerWithPhone({
     required String phoneNumber,
   }) async {
+    final formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+91$phoneNumber';
     // Satisfy required schema attributes with placeholders
     final userAttributes = {
-      AuthUserAttributeKey.phoneNumber: phoneNumber,
+      AuthUserAttributeKey.phoneNumber: formattedPhone,
       AuthUserAttributeKey.address: "Mumbai, India", 
       AuthUserAttributeKey.name: "New BlinKlean User",
       // Specifically addressing the names from the error message using Cognito-specific keys
@@ -81,7 +83,7 @@ class AuthService extends ChangeNotifier {
     };
 
     return await Amplify.Auth.signUp(
-      username: phoneNumber,
+      username: formattedPhone,
       password: 'BlinkLeanCustomerAuth123!', 
       options: SignUpOptions(userAttributes: userAttributes),
     );

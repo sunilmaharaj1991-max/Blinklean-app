@@ -156,7 +156,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       _buildVerifyButton()
                           .animate()
                           .fadeIn(delay: 500.ms)
-                          .slideY(begin: 0.2),
+                          .slideY(begin: 0.2)
+                          .shimmer(delay: 2.seconds, duration: 2.seconds),
                       
                       const SizedBox(height: 24),
                       

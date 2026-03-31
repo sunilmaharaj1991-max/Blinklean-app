@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/app_theme.dart';
@@ -27,28 +28,48 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 600),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: animation.drive(
+                Tween(begin: const Offset(0.0, 0.02), end: Offset.zero)
+                    .chain(CurveTween(curve: Curves.easeOutQuart)),
+              ),
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          key: ValueKey<int>(_currentIndex),
+          child: _screens[_currentIndex],
+        ),
+      ),
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(24, 0, 24, 30),
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 34),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(32),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              height: 75,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              height: 78,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(30),
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(32),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: Colors.white.withValues(alpha: 0.12),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 40,
+                    offset: const Offset(0, 15),
                   ),
                 ],
               ),
@@ -57,13 +78,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 children: [
                   _buildNavItem(0, 'Home', Icons.home_rounded),
                   _buildNavItem(1, 'Explore', Icons.grid_view_rounded),
-                  _buildNavItem(2, 'Profile', Icons.person_rounded),
+                  _buildNavItem(2, 'Account', Icons.person_rounded),
                 ],
               ),
             ),
           ),
         ),
-      ).animate().slideY(begin: 1, duration: 800.ms, curve: Curves.easeOutCubic),
+      ).animate().slideY(begin: 1.5, duration: 1000.ms, curve: Curves.easeOutBack, delay: 500.ms),
     );
   }
 
@@ -73,50 +94,53 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return GestureDetector(
       onTap: () {
         if (_currentIndex != index) {
-          Feedback.forLongPress(context);
+          HapticFeedback.lightImpact();
           setState(() => _currentIndex = index);
         }
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: 350.ms,
+        duration: 400.ms,
         curve: Curves.easeOutQuint,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 20 : 12,
-          vertical: 10,
+          horizontal: isSelected ? 22 : 12,
+          vertical: 12,
         ),
         decoration: BoxDecoration(
           gradient: isSelected
               ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    AppTheme.primaryColor.withValues(alpha: 0.2),
-                    AppTheme.secondaryColor.withValues(alpha: 0.3),
+                    AppTheme.primaryColor.withValues(alpha: 0.25),
+                    AppTheme.secondaryColor.withValues(alpha: 0.25),
                   ],
                 )
               : null,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
+          border: isSelected ? Border.all(color: Colors.white.withValues(alpha: 0.05)) : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              color: isSelected ? AppTheme.primaryColor : Colors.white.withValues(alpha: 0.4),
-              size: 24,
+              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
+              size: 26,
             ).animate(target: isSelected ? 1 : 0)
-              .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1))
-              .shimmer(delay: 400.ms, duration: 1200.ms),
+              .scale(begin: const Offset(1, 1), end: const Offset(1.15, 1.15))
+              .shimmer(delay: 500.ms, duration: 1500.ms),
             if (isSelected) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
                 label,
                 style: GoogleFonts.outfit(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.6,
                 ),
-              ).animate().fadeIn(duration: 300.ms).slideX(begin: -0.2),
+              ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.3),
             ],
           ],
         ),
@@ -124,3 +148,4 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 }
+

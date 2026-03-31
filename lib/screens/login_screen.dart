@@ -157,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.white,
                       letterSpacing: -1.5,
                     ),
-                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2).shimmer(delay: 1.5.seconds, duration: 2.seconds, color: Colors.white24),
                   
                   Text(
                     _isSignUp ? "Experience Premium Cleaning" : "Welcome Back",
@@ -199,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               hint: "Mobile Number",
                               icon: Icons.phone_iphone_rounded,
                               keyboardType: TextInputType.phone,
-                            ).animate().fadeIn(delay: 700.ms),
+                            ).animate().fadeIn(delay: 700.ms).slideX(begin: 0.1),
                           ] else 
                             Column(
                               children: [
@@ -283,6 +283,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         }),
                       ],
                     ).animate().fadeIn(delay: 1.4.seconds),
+                    
+                    const SizedBox(height: 48),
+
+                    // 🛠 Developer / Demo Access
+                    TextButton.icon(
+                      onPressed: _showDemoDialog,
+                      icon: const Icon(Icons.developer_mode_rounded, size: 14, color: Colors.white24),
+                      label: Text(
+                        "DEVELOPER ACCESS",
+                        style: GoogleFonts.outfit(
+                          color: Colors.white24,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: 2.seconds),
                   ],
                 ],
               ),
@@ -290,6 +307,47 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showDemoDialog() {
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: const Color(0xFF020617),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Colors.white10),
+        ),
+        title: Text(
+          "Demo Access",
+          style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDemoOption("Customer View", Icons.person_outline_rounded, UserRole.customer),
+            const SizedBox(height: 12),
+            _buildDemoOption("Partner View", Icons.handshake_rounded, UserRole.partner),
+            const SizedBox(height: 12),
+            _buildDemoOption("Admin View", Icons.admin_panel_settings_rounded, UserRole.admin),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDemoOption(String label, IconData icon, UserRole role) {
+    return ListTile(
+      leading: Icon(icon, color: AppTheme.secondaryColor),
+      title: Text(label, style: GoogleFonts.outfit(color: Colors.white)),
+      onTap: () {
+        AuthService.setDebugRole(role);
+        Navigator.pop(context);
+        Navigator.pushReplacementNamed(context, '/home');
+      },
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      tileColor: Colors.white.withValues(alpha: 0.05),
     );
   }
 

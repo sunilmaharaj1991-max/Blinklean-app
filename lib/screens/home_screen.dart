@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shimmer/shimmer.dart';
 import '../core/app_theme.dart';
 import '../models/service_model.dart';
 import 'scrap_screen.dart';
@@ -137,23 +138,52 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ],
-            body: FutureBuilder<List<ServiceModel>>(
-              future: _servicesFuture,
-              builder: (context, snapshot) {
-                final services = snapshot.data ?? ServiceModel.getAllServices();
-                
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildHomeTab(services),
-                    _buildVehicleTab(services),
-                    _buildLaundryTab(services),
-                    _buildScrapTab(),
-                  ],
-                );
-              },
+            body: AnimatedSwitcher(
+              duration: 600.ms,
+              switchInCurve: Curves.easeOutQuart,
+              child: FutureBuilder<List<ServiceModel>>(
+                key: ValueKey<int>(_tabController.index),
+                future: _servicesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return _buildSkeletonLoader();
+                  }
+                  
+                  final services = snapshot.data ?? ServiceModel.getAllServices();
+                  
+                  return TabBarView(
+                    controller: _tabController,
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      _buildHomeTab(services),
+                      _buildVehicleTab(services),
+                      _buildLaundryTab(services),
+                      _buildScrapTab(),
+                    ],
+                  ).animate().fadeIn(duration: 400.ms);
+                },
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonLoader() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: List.generate(4, (i) => 
+          GlassCard(
+            margin: const EdgeInsets.only(bottom: 16),
+            height: 100,
+            child: Shimmer.fromColors(
+              baseColor: Colors.white10,
+              highlightColor: Colors.white24,
+              child: Container(color: Colors.white),
+            ),
+          ).animate(delay: (i * 100).ms).fadeIn().slideY(begin: 0.1),
         ),
       ),
     );
@@ -264,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen>
                   height: 1.1,
                   letterSpacing: -1.2,
                 ),
-              ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
+              ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2).shimmer(delay: 1.5.seconds, duration: 2.seconds),
               const SizedBox(height: 16),
               Text(
                 'BlinKlean uses state-of-the-art waterless technology\nand professional eco-friendly methods.',

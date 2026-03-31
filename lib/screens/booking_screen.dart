@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -98,16 +99,21 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   void _processBooking(String transactionId) async {
+    // Show a loading overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => const Center(child: CircularProgressIndicator(color: AppTheme.secondaryColor)),
+    );
+
     final bookingData = {
       'service': {
         'serviceId': widget.service.id,
         'name': widget.service.name,
         'category': widget.service.category,
-        'icon': widget.service.icon.codePoint.toString(),
       },
       'address': {
         'street': _addressController.text,
-        'area': '',
         'city': 'Bengaluru',
       },
       'schedule': {
@@ -115,37 +121,75 @@ class _BookingScreenState extends State<BookingScreen> {
         'time': _selectedTime?.format(context) ?? '',
       },
       'pricing': {
-        'basePrice': widget.service.startingPrice,
         'totalPrice': widget.service.startingPrice,
       },
       'payment': {
-        'method': 'online',
-        'status': 'paid',
-        'transactionId': transactionId,
+        'method': 'DEMO-MODE',
+        'status': 'authorized', // Waiting for partner confirmation
+        'transactionId': 'DEMO_${DateTime.now().millisecondsSinceEpoch}',
       },
     };
 
     try {
       await _api.createBooking(bookingData);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Booking Confirmed Successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.popUntil(context, (route) => route.isFirst);
+        Navigator.pop(context); // Close loading overlay
+        _showSuccessDialog();
       }
     } catch (e) {
       if (mounted) {
+        Navigator.pop(context); // Close loading overlay
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating booking: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error creating demo booking: $e'), backgroundColor: Colors.red),
         );
       }
     }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: AlertDialog(
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30), side: const BorderSide(color: Colors.white10)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle_outline_rounded, color: Colors.greenAccent, size: 80)
+                  .animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+              const SizedBox(height: 24),
+              Text(
+                'BOOKING CONFIRMED',
+                style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Our partner will reach out to you shortly for confirmation.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(color: Colors.white60, fontSize: 13),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.greenAccent.withValues(alpha: 0.1),
+                    foregroundColor: Colors.greenAccent,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text('Return Home'),
+                ),
+              ),
+            ],
+          ),
+        ).animate().scale(duration: 400.ms),
+      ),
+    );
   }
 
   @override
@@ -324,7 +368,7 @@ class _BookingScreenState extends State<BookingScreen> {
             child: ElevatedButton(
               onPressed: _initiatePayment,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-              child: Text('CONFIRM & PAY SECURELY', style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+              child: Text('CONFIRM BOOKING (DEMO MODE)', style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
             ),
           ),
         ],

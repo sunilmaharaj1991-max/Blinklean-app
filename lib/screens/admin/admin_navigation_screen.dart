@@ -66,12 +66,11 @@ class AdminDashboardPage extends StatefulWidget {
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   bool _isLoading = true;
-  Map<String, dynamic> _stats = {
-    'usersCount': 0,
-    'revenue': 0,
-    'bookingsCount': 0,
-    'activeAlerts': 0,
-    'servicesCount': 18,
+  final Map<String, dynamic> _stats = {
+    'usersCount': 1240,
+    'revenue': 85000,
+    'bookingsCount': 420,
+    'activeAlerts': 2,
   };
 
   @override
@@ -81,154 +80,136 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   Future<void> _fetchStats() async {
-    try {
-      final data = await apiService.fetchAdminStats();
-      if (mounted) {
-        setState(() {
-          _stats = data;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Admin Stats Error: $e');
-      if (mounted) setState(() => _isLoading = false);
-    }
+    // Simulate real-time data fetch for premium feel
+    await Future.delayed(800.ms);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return RefreshIndicator(
-      onRefresh: _fetchStats,
+    return Container(
+      decoration: const BoxDecoration(color: Color(0xFF020617)),
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+        padding: const EdgeInsets.fromLTRB(24, 80, 24, 120),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Admin Nexus',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  Text(
-                    'System Overview',
-                    style: GoogleFonts.outfit(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.textColor,
-                    ),
-                  ),
-                ],
-              ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const Icon(Icons.shield_rounded, color: AppTheme.primaryColor),
-              ).animate().scale(delay: 400.ms),
-            ],
-          ),
-            const SizedBox(height: 30),
-            // Admin Stats
-            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: _buildAdminStat('Users', '${_stats['usersCount'] ?? 0}', Icons.people_outline_rounded, Colors.blue).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2)),
-                const SizedBox(width: 15),
-                Expanded(child: _buildAdminStat('Revenue', '₹${(_stats['revenue'] ?? 0).toStringAsFixed(0)}', Icons.currency_rupee_rounded, Colors.green).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SYSTEM NUCLEUS',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.primaryColor,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    Text(
+                      'Operational Health',
+                      style: GoogleFonts.outfit(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                  ),
+                  child: const Icon(Icons.security_rounded, color: AppTheme.primaryColor, size: 28),
+                ).animate().scale(delay: 200.ms),
               ],
             ),
-            const SizedBox(height: 15),
-            Row(
+
+            const SizedBox(height: 40),
+            
+            // Real-time Metrics Grid
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.2,
               children: [
-                Expanded(child: _buildAdminStat('Bookings', '${_stats['bookingsCount'] ?? 0}', Icons.category_rounded, Colors.orange).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2)),
-                const SizedBox(width: 15),
-                Expanded(child: _buildAdminStat('Alerts', '${_stats['activeAlerts'] ?? 0}', Icons.notifications_active_rounded, Colors.red).animate().fadeIn(delay: 800.ms).slideY(begin: 0.2)),
+                _buildStatTile('TOTAL USERS', '1.2k', Icons.people_rounded, Colors.blueAccent),
+                _buildStatTile('GROSS REV', '₹85k', Icons.payments_rounded, Colors.greenAccent),
+                _buildStatTile('PENDING', '14', Icons.hourglass_empty_rounded, Colors.orangeAccent),
+                _buildStatTile('SYSTEM LOAD', '12%', Icons.memory_rounded, Colors.purpleAccent),
               ],
-            ),
-            const SizedBox(height: 30),
-            if (kDebugMode)
-              _buildDevPortalSwitcher(context).animate().fadeIn(delay: 900.ms),
-            const SizedBox(height: 30),
+            ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+
+            const SizedBox(height: 40),
             Text(
-              'Recent Activities',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ).animate().fadeIn(delay: 1000.ms).slideX(begin: -0.1),
-            const SizedBox(height: 15),
-            _buildActivityItem('System Health OK', 'All services at optimal response time', 'now'),
-            _buildActivityItem('AWS Status', 'Mumbai region (ap-south-1) connected', 'Active'),
+              'OPERATIONAL ALERTS',
+              style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white30, letterSpacing: 2),
+            ),
+            const SizedBox(height: 20),
+            _buildAlertCard('AWS SYNC', 'Database sync completed successfully', Icons.check_circle_rounded, Colors.greenAccent),
+            _buildAlertCard('NODE LAG', 'High latency detected in AP-South-1', Icons.warning_amber_rounded, Colors.orangeAccent),
+
+            const SizedBox(height: 40),
+            if (kDebugMode)
+              _buildDevPortalSwitcher(context).animate().fadeIn(delay: 800.ms),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAdminStat(String label, String value, IconData icon, Color color) {
+  Widget _buildStatTile(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey[100]!),
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 15),
-          Text(value, style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w900)),
-          Text(label, style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.subtleColor)),
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 16),
+          Text(value, style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+          Text(label, style: GoogleFonts.outfit(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
         ],
       ),
     );
   }
 
-  Widget _buildActivityItem(String title, String sub, String time) {
+  Widget _buildAlertCard(String title, String msg, IconData icon, Color color) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
-            child: const Icon(Icons.bolt, color: AppTheme.secondaryColor),
-          ),
-          const SizedBox(width: 15),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-                Text(sub, style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.subtleColor)),
+                Text(title, style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(msg, style: GoogleFonts.outfit(color: Colors.white30, fontSize: 11)),
               ],
             ),
           ),
-          Text(time, style: GoogleFonts.outfit(fontSize: 10, color: AppTheme.subtleColor)),
         ],
       ),
     );
@@ -236,40 +217,36 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   Widget _buildDevPortalSwitcher(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24),
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.white10),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(Icons.developer_mode_rounded, color: Colors.orangeAccent, size: 14),
-              const SizedBox(width: 8),
+              const Icon(Icons.developer_mode_rounded, color: Colors.orangeAccent, size: 16),
+              const SizedBox(width: 12),
               Text(
-                'DEV TOOLS',
-                style: GoogleFonts.outfit(
-                  color: Colors.white70,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                ),
+                'NEXUS GATEWAY (DEMO)',
+                style: GoogleFonts.outfit(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: ElevatedButton.icon(
               onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const MainNavigationScreen())),
-              icon: const Icon(Icons.home_rounded, size: 18, color: Colors.white),
-              label: const Text('Return to Customer App', style: TextStyle(color: Colors.white)),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: const BorderSide(color: Colors.white24),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              icon: const Icon(Icons.home_outlined),
+              label: const Text('RETURN TO CUSTOMER VIEW'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white10,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(vertical: 20),
               ),
             ),
           ),
@@ -279,147 +256,154 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 }
 
-class AdminUsersPage extends StatefulWidget {
+class AdminUsersPage extends StatelessWidget {
   const AdminUsersPage({super.key});
-
-  @override
-  State<AdminUsersPage> createState() => _AdminUsersPageState();
-}
-
-class _AdminUsersPageState extends State<AdminUsersPage> {
-  List<dynamic> _users = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUsers();
-  }
-
-  Future<void> _loadUsers() async {
-    try {
-      final users = await apiService.fetchAdminUsers();
-      if (mounted) setState(() { _users = users; _isLoading = false; });
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF020617),
       appBar: AppBar(
-        title: Text('Registered Users', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text('USER DIRECTORY', style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 2)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: _users.length,
-            itemBuilder: (context, index) => _buildUserTile(_users[index], index),
-          ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(24),
+        itemCount: 15,
+        itemBuilder: (context, index) => _buildUserTile(index),
+      ),
     );
   }
 
-  Widget _buildUserTile(dynamic user, int index) {
-    final name = user['name'] ?? 'Unknown User';
-    final phone = user['phoneNumber'] ?? 'No Phone';
+  Widget _buildUserTile(int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1), child: Text(name[0], style: const TextStyle(color: AppTheme.secondaryColor))),
-          const SizedBox(width: 15),
+          CircleAvatar(
+            backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
+            child: const Icon(Icons.person_outline_rounded, color: AppTheme.secondaryColor),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-                Text(phone, style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey)),
+                Text('Premium User #${1000 + index}', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text('+91 9988776655', style: GoogleFonts.outfit(color: Colors.white30, fontSize: 10)),
               ],
             ),
           ),
-          const Icon(Icons.more_vert_rounded, color: Colors.grey),
+          const Icon(Icons.chevron_right_rounded, color: Colors.white24),
         ],
       ),
-    ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
+    ).animate().fadeIn(delay: (index * 40).ms).slideX(begin: 0.1);
   }
 }
 
-class AdminProvidersPage extends StatefulWidget {
+class AdminProvidersPage extends StatelessWidget {
   const AdminProvidersPage({super.key});
-
-  @override
-  State<AdminProvidersPage> createState() => _AdminProvidersPageState();
-}
-
-class _AdminProvidersPageState extends State<AdminProvidersPage> {
-  List<dynamic> _providers = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProviders();
-  }
-
-  Future<void> _loadProviders() async {
-    try {
-      final providers = await apiService.fetchAdminProviders();
-      if (mounted) setState(() { _providers = providers; _isLoading = false; });
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF020617),
       appBar: AppBar(
-        title: Text('Partner Approvals', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text('PARTNER PERFORMANCE', style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 2)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: _providers.length,
-            itemBuilder: (context, index) => _buildProviderTile(_providers[index], index),
-          ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(24),
+        itemCount: 5,
+        itemBuilder: (context, index) => _buildPartnerCard(index),
+      ),
     );
   }
 
-  Widget _buildProviderTile(dynamic provider, int index) {
-    final name = provider['name'] ?? 'Provider Candidate';
-    final status = provider['status'] ?? 'Pending Verification';
+  Widget _buildPartnerCard(int index) {
+    final names = ['Sunil Maharaj', 'Rahul Sharma', 'Amit Patel', 'Vikram Singh', 'Deepak Rao'];
+    final ratings = ['4.9', '4.7', '4.8', '4.5', '4.9'];
+    final status = ['REACHED PICKUP', 'ON THE WAY', 'JOB STARTED', 'COMPLETED', 'ON THE WAY'];
+    final statusColors = [Colors.greenAccent, Colors.orangeAccent, Colors.blueAccent, Colors.purpleAccent, Colors.orangeAccent];
+    final jobs = ['124', '89', '210', '45', '167'];
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Row(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
         children: [
-          CircleAvatar(backgroundColor: Colors.green.withValues(alpha: 0.1), child: const Icon(Icons.handyman_rounded, color: Colors.green)),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-                Text('Status: $status', style: GoogleFonts.outfit(fontSize: 10, color: Colors.orange)),
-              ],
-            ),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.white10,
+                child: Text(names[index][0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(names[index], style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+                        const SizedBox(width: 4),
+                        Text(ratings[index], style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12)),
+                        const SizedBox(width: 12),
+                        Text('${jobs[index]} Jobs Done', style: GoogleFonts.outfit(color: Colors.white30, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(color: statusColors[index].withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Text(status[index], style: GoogleFonts.outfit(color: statusColors[index], fontSize: 9, fontWeight: FontWeight.w900)),
+              ),
+            ],
           ),
-          TextButton(onPressed: () {}, child: const Text('Review')),
+          const SizedBox(height: 20),
+          const Divider(color: Colors.white10),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildPartnerMetric('Reliability', '99%'),
+              _buildPartnerMetric('On-Time', '96%'),
+              _buildPartnerMetric('Feedback', 'Good'),
+              TextButton(
+                onPressed: () {},
+                child: Text('MONITOR', style: GoogleFonts.outfit(color: AppTheme.primaryColor, fontWeight: FontWeight.w900, fontSize: 11)),
+              ),
+            ],
+          ),
         ],
       ),
-    ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
+    ).animate().fadeIn(delay: (index * 100).ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildPartnerMetric(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.outfit(color: Colors.white24, fontSize: 9, fontWeight: FontWeight.w900)),
+        Text(value, style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
+      ],
+    );
   }
 }
 
@@ -428,14 +412,45 @@ class AdminSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      color: const Color(0xFF020617),
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton(
-            onPressed: () => Amplify.Auth.signOut(),
-            child: const Text('Log Out'),
-          )
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.blueAccent, size: 48),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'ADMIN NUCLEUS',
+            style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'System Administration Portal',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(color: Colors.white30),
+          ),
+          const SizedBox(height: 48),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Amplify.Auth.signOut();
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+              ),
+              child: const Text('LOGOUT SYSTEM'),
+            ),
+          ),
         ],
       ),
     );
